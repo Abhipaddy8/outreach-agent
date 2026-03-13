@@ -217,41 +217,276 @@ If any step fails, the agent tells you exactly what to fix — not a generic err
 
 ---
 
-## Use Cases
+## Email Outreach — Approaches, Use Cases & Long-Chain Workflows
 
-### Job Search
+There are three ways to source leads for email outreach, each with different speed, cost, and accuracy tradeoffs. Then there are long-chain workflows where the agent runs entire multi-week campaigns on its own — using `/loop`, `MEMORY.md`, and `missions.md` to stay on course without you touching it.
+
+---
+
+### Approach 1 — Direct Query (Apollo or Prospeo)
+
+**Fastest. Best when you know exactly who you want.**
+
+You describe the target. The agent queries Apollo directly — title, industry, company size, geography — and gets back verified contacts in one call. No research step. No wasted credits.
+
 ```
-"Find 15 CTOs at funded AI startups hiring remote engineers
+"Find 20 VP Sales at B2B SaaS companies in the US,
+ 50-200 employees, using Apollo. Verified emails only."
+```
+
+```
+Agent:
+  → APOLLO_PEOPLE_SEARCH: title=VP Sales, industry=SaaS,
+    employee_count=50-200, location=US, contact_email_status=verified
+  → APOLLO_BULK_PEOPLE_ENRICHMENT on returned IDs
+  → Instantly verify each email
+  → Send
+```
+
+**When to use:** You have a tight ICP, you trust Apollo's database, and you want results in under 5 minutes.
+
+**Credit cost:** 1 Apollo enrichment credit per contact. Verification is separate (Instantly).
+
+---
+
+### Approach 2 — Research First, Then Enrich (Tavily → Apollo or Prospeo)
+
+**More targeted. Best when you want context before enrichment.**
+
+Tavily finds the companies and decision makers first — from news, lists, LinkedIn, job boards, industry articles. The agent builds a shortlist of exactly who it wants, then enriches only those people. You're not paying to enrich a database query — you're paying to enrich a pre-qualified list.
+
+```
+"Use Tavily to find AI companies in Southeast Asia
+ that recently raised Series A, then find their CTOs
  and send them my portfolio"
 ```
-Agent finds companies with hiring signals, enriches emails, sends portfolio with personalised hook per company.
 
-### Consulting Outreach
 ```
-"Find VP Sales at B2B SaaS companies 50-200 employees
- and pitch my AI outreach system"
+Agent:
+  → tavily_search: "AI startup Series A Southeast Asia 2025"
+  → tavily_extract: pulls company names + domains from results
+  → tavily_search per company: "[Company] CTO OR CEO LinkedIn"
+  → Builds shortlist: name + company domain
+  → Prospeo /enrich-person for each → verified email
+  → Instantly verify
+  → Send
 ```
-Agent targets by title + company size + industry, writes copy that references their specific growth challenge.
 
-### Follow-Ups
-```
-"Send a follow-up to everyone who hasn't replied in 7 days"
-```
-Agent reads AERCHITECT.md, filters contacts sent 7+ days ago with no reply, writes a short follow-up, sends.
+**When to use:** Niche targets (specific geography, funding stage, recent news), where Apollo's database may be thin or outdated. Also good when you want to reference something specific (e.g. their funding news) in the email.
 
-### Pattern Interrupt
-```
-"Send the TechStack Tetris game to 20 AI engineers as a
- conversation starter"
-```
-Agent writes a value-first email with the game link hyperlinked (not bare URL), no hard ask, soft CTA.
+**Credit cost:** 0 Tavily credits used on research (API allowance). 1 Prospeo credit per enrichment.
 
-### Agency Partnership
+---
+
+### Approach 3 — Credit-Efficient: Tavily Finds Everything, Enrich Once
+
+**Most cost-efficient. Best for volume campaigns.**
+
+The expensive part of any pipeline is enrichment. If you ask Apollo to find and enrich 50 people, you're spending 50 credits. But if Tavily already found the name AND the company domain, you only need one Prospeo call per person — `/enrich-person` with `first_name + last_name + company_website`. No Apollo needed at all for sourcing.
+
 ```
-"Find AI development agencies in Europe under 50 people
- and pitch open source tools collaboration"
+"Find 50 founders of bootstrapped SaaS companies
+ that launched in the last 2 years. Use Tavily only
+ for research. Then enrich emails via Prospeo."
 ```
-Agent searches by geography + company type + size, personalises per agency.
+
+```
+Agent:
+  → tavily_search: "bootstrapped SaaS founder launched 2023 2024"
+  → tavily_extract: article lists, ProductHunt launches, Indie Hackers
+  → For each result: extract founder name + company website
+  → Prospeo /enrich-person: { first_name, last_name, company_website }
+    → 1 credit. Returns verified email + LinkedIn + title.
+  → Instantly verify
+  → Send
+```
+
+**Credit math:**
+```
+50 contacts via Apollo search + enrich  = ~50-100 Apollo credits
+50 contacts via Tavily → Prospeo enrich = 50 Prospeo credits (0 Apollo)
+
+Tavily research: free (within monthly allowance)
+Prospeo credits: ~$0.02 each at scale
+```
+
+**When to use:** Any campaign over 20 contacts where you don't need Apollo's filtering. Especially good for niche targets found in articles, lists, community posts, or directories.
+
+---
+
+### Long-Chain Use Cases
+
+These are multi-step, multi-day workflows the agent runs as a single mission — each step triggers the next, memory carries state, missions track progress.
+
+---
+
+#### Chain 1 — Weekly New Leads + Auto Follow-Up
+
+```
+"Every Monday find 20 new AI startup CTOs, send Wave 1 email.
+ Every Thursday send Wave 2 follow-up to anyone who didn't reply.
+ Keep doing this until I say stop."
+```
+
+**What the agent builds:**
+
+```
+missions.md:
+  ▶ Weekly Outreach Loop
+    - [ ] Monday: Source 20 new CTOs via Tavily → enrich → verify → send Wave 1
+    - [ ] Thursday: Read AERCHITECT.md → filter no-reply Wave 1 → send Wave 2
+    - [ ] Repeat
+
+MEMORY.md written after each run:
+  "Wave 1 sent: 2026-03-17 — 20 contacts"
+  "Wave 2 due: 2026-03-20 — follow up with non-repliers"
+```
+
+**With `/loop`:** Run `claude /loop 1d` and the agent checks MEMORY.md daily, executes whatever is due that day, and logs back. It never forgets where it is because missions.md tracks every step and MEMORY.md carries the dates. See [/loop](#loop---self-running-workflows) below.
+
+---
+
+#### Chain 2 — Funding Signal → Immediate Outreach
+
+```
+"Monitor for AI startups that announce Series A funding.
+ When one appears, find the CTO, send an email within 24 hours
+ referencing their funding announcement."
+```
+
+```
+Agent (daily loop):
+  → tavily_search: "AI startup Series A announced site:techcrunch.com OR site:venturebeat.com"
+  → Compare results to AERCHITECT.md — skip already-contacted companies
+  → For new ones: enrich CTO email via Prospeo
+  → Send email: "Congrats on the Series A — [personalised hook]"
+  → Log to AERCHITECT.md with funding signal source
+  → Write to MEMORY.md: next check due tomorrow
+```
+
+**Why timing matters:** Companies that just raised are actively hiring, building, and buying. Your email lands when they have budget and urgency.
+
+---
+
+#### Chain 3 — Job Posting Signal → Engineer Outreach
+
+```
+"Find AI companies that posted a backend engineer job in the last 7 days.
+ Find the CTO or VP Engineering. Send them my portfolio.
+ 7 days later, follow up if no reply."
+```
+
+```
+Agent:
+  → tavily_search: "AI startup hiring backend engineer site:linkedin.com/jobs OR lever.co OR greenhouse.io"
+  → Extract company names from job postings
+  → Find CTO/VP Eng per company via Prospeo
+  → Send Wave 1: portfolio email with job posting signal as hook
+  → Log to AERCHITECT.md: source=job posting, role=backend engineer
+  → Write to MEMORY.md: "Wave 2 due 2026-03-20 for [N] contacts"
+
+7 days later (new session):
+  → Agent reads MEMORY.md → Wave 2 due today
+  → Reads AERCHITECT.md → filters no-reply job-signal contacts
+  → Sends follow-up
+```
+
+---
+
+#### Chain 4 — Event → Post-Event Outreach
+
+```
+"Find people who attended or spoke at SaaStr 2025.
+ Find their emails. Send them an email referencing SaaStr
+ and what they spoke about or posted about it."
+```
+
+```
+Agent:
+  → tavily_search: "SaaStr 2025 speakers attendees LinkedIn"
+  → tavily_extract: speaker list pages, LinkedIn post aggregators
+  → For each speaker: name + company → Prospeo enrich
+  → tavily_search per person: "[Name] SaaStr 2025 talk OR post"
+  → Personalise email: reference their session topic or post
+  → Send
+  → Log source: SaaStr 2025
+```
+
+---
+
+#### Chain 5 — Competitor Customer → Switcher Campaign
+
+```
+"Find people who mention using [Competitor] on LinkedIn or in reviews.
+ Send them a comparison email showing why we're better."
+```
+
+```
+Agent:
+  → tavily_search: "[Competitor] review site:g2.com OR capterra.com"
+  → tavily_search: "using [Competitor] site:linkedin.com"
+  → Extract reviewer names + companies
+  → Prospeo enrich emails
+  → Send: lead with their specific pain point (from the review text)
+  → Log to AERCHITECT.md: source=competitor review
+```
+
+---
+
+#### Chain 6 — Content → Inbound Nurture Loop
+
+```
+"I'm publishing a blog post about [topic] every week.
+ After each post goes live, find 20 people who would care
+ about that topic and send them the post with a personal note."
+```
+
+```
+Agent (weekly, triggered by you):
+  → You: "Post is live: [URL]"
+  → Agent reads post via tavily_extract
+  → Identifies the core topic + who it's for
+  → tavily_search: decision makers in that audience
+  → Prospeo enrich
+  → Email: "Wrote something you might find useful" + link to post
+  → Tracks in AERCHITECT.md by post URL
+```
+
+---
+
+### `/loop` — Self-Running Workflows
+
+For campaigns that should run on a schedule without you starting each session, use `/loop`.
+
+```bash
+claude /loop 1d    # runs the agent daily
+claude /loop 12h   # runs every 12 hours
+claude /loop 1w    # runs weekly
+```
+
+**How it works with missions + memory:**
+
+```
+You set up the mission once:
+  "Every day: check MEMORY.md for what's due,
+   source 20 new leads, send due follow-ups,
+   update tracker, write tomorrow's tasks to MEMORY.md"
+
+Agent runs on loop:
+  Day 1: Sources 20 leads → sends Wave 1 → writes "Wave 2 due Day 8" to MEMORY.md
+  Day 8: Reads MEMORY.md → sees Wave 2 due → sends follow-ups → writes "Wave 3 due Day 15"
+  Day 15: Sends Wave 3 (breakup email) → marks contacts closed or hot
+
+You check in when you want. The campaign runs itself.
+```
+
+**Why it stays on course:**
+
+- `missions.md` — every task written before execution. If the loop crashes mid-step, next run reads missions.md and continues from the last ✅ step
+- `MEMORY.md` — every follow-up date written after each send. The agent always knows what's due and when
+- `AERCHITECT.md` — every contact logged. The agent never re-contacts the same person because it checks the tracker before every send
+
+The combination of these three files makes the agent stateful across arbitrary time gaps. A `/loop` that ran yesterday picks up exactly where it left off today — even if the session crashed, the machine rebooted, or you paused for a week.
 
 ---
 

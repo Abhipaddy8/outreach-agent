@@ -22,7 +22,7 @@ npm install -g @anthropic/claude-code
 
 ### 2. Clone this repo
 ```bash
-git clone https://github.com/YOUR_USERNAME/outreach-agent
+git clone https://github.com/Abhipaddy8/outreach-agent
 cd outreach-agent
 ```
 

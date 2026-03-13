@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "gmail": {
+      "command": "npx",
+      "args": ["-y", "@composio/mcp@latest", "--api-key", "YOUR_COMPOSIO_API_KEY"],
+      "env": {}
+    },
+    "tavily": {
+      "command": "npx",
+      "args": ["-y", "@tavily/mcp@latest"],
+      "env": {
+        "TAVILY_API_KEY": "YOUR_TAVILY_API_KEY"
+      }
+    },
+    "instantly-neverbounce": {
+      "command": "npx",
+      "args": ["-y", "@composio/mcp@latest", "--api-key", "YOUR_COMPOSIO_API_KEY"],
+      "env": {}
+    },
+    "apollo": {
+      "command": "npx",
+      "args": ["-y", "@composio/mcp@latest", "--api-key", "YOUR_COMPOSIO_API_KEY"],
+      "env": {}
+    }
+  }
+}

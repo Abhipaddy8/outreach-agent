@@ -1,17 +1,63 @@
 # Missions — Outreach Agent
 
-> This file is written and updated by the coding agent every session.
-> Marks: ▶ = Active | ✅ = Complete | ⏸ = Paused
+> Written and updated by the agent every session.
+> ▶ = Active | ✅ = Complete | ⏸ = Paused | ❌ = Failed
 
 ---
 
-## How Missions Work
+## Setup Wizard (First Run)
 
-1. User tells agent what they want to do today
-2. Agent writes it as a mission here with ▶
-3. Agent executes step by step, marking ✅ as it goes
-4. When complete, agent marks mission ✅ and asks what's next
+> Agent runs these automatically on first launch. Each must PASS before the next starts.
+
+### S1 — Verify File Structure
+- [ ] All 6 required files exist and are readable
+**Status**: ⏳ Pending
 
 ---
 
-<!-- Missions will be written here by the agent -->
+### S2 — Sender Profile
+- [ ] User answers name / email / LinkedIn / offer
+- [ ] Written into MEMORY.md
+- [ ] No placeholders remain
+**Status**: ⏳ Pending
+
+---
+
+### S3 — Tavily Connection
+- [ ] Test search returns results
+**Status**: ⏳ Pending
+
+---
+
+### S4 — Email Enrichment (Prospeo)
+- [ ] API key set in skills/outreach.md
+- [ ] Test call returns data
+**Status**: ⏳ Pending
+
+---
+
+### S5 — Email Verification (Instantly)
+- [ ] Test verify call returns a status
+**Status**: ⏳ Pending
+
+---
+
+### S6 — Gmail Send Test
+- [ ] Test email sent to self
+- [ ] User confirms receipt
+**Status**: ⏳ Pending
+
+---
+
+### S7 — Setup Complete
+- [ ] SETUP_COMPLETE written to MEMORY.md
+- [ ] Ready for outreach
+**Status**: ⏳ Pending
+
+---
+
+## Outreach Missions
+
+> Written here by the agent as user requests come in.
+
+<!-- Agent writes missions below this line -->

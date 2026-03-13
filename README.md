@@ -427,6 +427,196 @@ Or add it manually: drop `skills/linkedin.md` into the skills folder with your p
 
 ---
 
+## Lead Generation — Finding Interested People Before They Know You Exist
+
+The fastest way to find high-intent leads isn't a database. It's a LinkedIn post.
+
+When a business owner or executive comments on a post about a topic — AI, sales, hiring, operations — they're raising their hand. They care about that problem right now. They're not a cold lead. They're a warm one. You're not interrupting them; you're continuing a conversation they already started in public.
+
+This agent can do the entire pipeline automatically: find the posts, extract the commenters, qualify them, enrich their emails, and send outreach that references the exact post they commented on.
+
+---
+
+### The Pipeline
+
+```
+Step 1 — Find the post (Tavily)
+  Agent searches for top influencers in your target niche
+  Gets their LinkedIn profile URLs
+
+Step 2 — Visit the post (Claude in Chrome)
+  Agent navigates to the influencer's recent posts
+  Identifies the most relevant post (by topic + engagement)
+  Opens the comments section
+
+Step 3 — Extract commenters (DOM + Screenshots)
+  Agent runs DOM extraction on the comments section
+  Pulls: commenter name, headline, LinkedIn profile URL, comment text
+  Takes screenshots of comment batches as backup
+
+Step 4 — Qualify (AI analysis)
+  Agent analyzes each commenter's headline + comment text
+  Scores them: are they a business owner / decision maker? Do they signal a problem you solve?
+  Keeps high-intent leads, drops irrelevant ones
+
+Step 5 — Enrich (Prospeo)
+  For each qualified lead: POST /enrich-person with name + company domain
+  Gets verified email
+
+Step 6 — Outreach (Email or LinkedIn)
+  Option A — Email: personalised copy referencing the exact post + their comment
+  Option B — LinkedIn: connection request referencing the post
+  Option C — Both: email first, LinkedIn follow-up 7 days later
+
+Step 7 — Track (AERCHITECT.md)
+  Every lead logged with source post URL, comment text, enrichment status, send date
+```
+
+---
+
+### How DOM Extraction Works
+
+When Claude in Chrome visits a LinkedIn post, the agent runs JavaScript directly in the page context to extract structured data from the DOM — no scraping library needed, no third-party tool.
+
+**What the agent extracts per commenter:**
+```javascript
+// Agent runs this in the browser via Claude in Chrome
+document.querySelectorAll('.comments-comment-item').forEach(comment => {
+  const name    = comment.querySelector('.comments-post-meta__name').innerText
+  const headline= comment.querySelector('.comments-post-meta__headline').innerText
+  const profileUrl = comment.querySelector('a.app-aware-link').href
+  const commentText = comment.querySelector('.comments-comment-item__main-content').innerText
+  // ...
+})
+```
+
+This gives the agent a clean list of:
+- Full name
+- Current headline (e.g. "CEO at Acme | Helping B2B teams close faster")
+- LinkedIn profile URL
+- Exactly what they wrote in the comment
+
+**Screenshots as backup:** For comment sections that lazy-load or paginate, the agent takes screenshots of each batch and uses vision to extract names and headlines from the image — useful when DOM access is blocked or inconsistent.
+
+---
+
+### How to Instruct the Agent
+
+```
+"Find the top 3 LinkedIn influencers posting about AI sales tools,
+ go to their most recent posts, extract all the commenters
+ who are founders or heads of sales, enrich their emails,
+ and send them a short email referencing the post"
+```
+
+The agent will:
+1. Use Tavily to find influencer profiles (`"top LinkedIn influencers AI sales 2025 site:linkedin.com"`)
+2. Open each profile in Chrome, scan recent posts for topic match
+3. Extract comments via DOM
+4. Filter by headline keywords (Founder, CEO, Head of Sales, VP, Director)
+5. Enrich via Prospeo
+6. Write email: *"I saw your comment on [Influencer]'s post about [topic] — [your pitch]"*
+7. Send + track
+
+---
+
+### Use Cases
+
+#### B2B SaaS — Find Buyers Actively Researching Your Category
+```
+Target post topic: "Is your sales team ready for AI?"
+Target commenter: VP Sales, Head of Revenue, CRO at 50-500 employee companies
+
+Outreach angle:
+"Hi [Name] — saw your comment on [Influencer]'s post about AI in sales.
+ You mentioned [what they said]. We've built a system that does exactly that —
+ [one-line result]. Worth a 15-min look?"
+```
+
+#### Recruiting / Staffing — Find Hiring Managers Complaining About Talent
+```
+Target post topic: "Why is hiring engineers so hard right now?"
+Target commenter: CTO, VP Engineering, Founder who mentions hiring pain
+
+Outreach angle:
+"Saw you comment on [Influencer]'s post about the engineer hiring crunch.
+ You said [their words]. I'm an AI systems engineer open to contract work —
+ happy to jump on a call if the timing's right."
+```
+
+#### Agency / Consulting — Find Founders Struggling With Your Problem
+```
+Target post topic: "Our outbound completely dried up in 2025"
+Target commenter: Founder, CEO, Head of Growth at B2B product companies
+
+Outreach angle:
+"[Name] — saw your comment on [post] about outbound dying.
+ We've replaced the entire SDR function with an AI system for 3 companies.
+ Happy to show you how if you're open to it."
+```
+
+#### SaaS Partnerships — Find Complementary Tool Builders
+```
+Target post topic: "Best AI tools for operations teams"
+Target commenter: Founders of adjacent SaaS tools (not direct competitors)
+
+Outreach angle:
+"Saw you engage with [Influencer]'s post on AI ops tools.
+ We're building in the same space — looks like our tools are complementary.
+ Would love to explore a partnership or integration."
+```
+
+#### Investor Outreach — Find Active Investors Commenting on Startup Posts
+```
+Target post topic: "What makes an AI startup fundable in 2025?"
+Target commenter: Partners at VC firms, angel investors, scouts
+
+Outreach angle:
+"Noticed your comment on [post] about what makes AI startups fundable.
+ You mentioned [their point]. We've hit [traction metric] —
+ would love to share what we're building."
+```
+
+---
+
+### Full Prompt Example (Copy + Paste)
+
+```
+Find the top 5 LinkedIn influencers who post about [YOUR TOPIC].
+For each, visit their 3 most recent posts and extract all commenters.
+Filter for: [TARGET TITLES] at companies with [HEADCOUNT] employees.
+For each qualified commenter:
+  - Get their LinkedIn URL from the DOM
+  - Enrich their email via Prospeo
+  - Log to AERCHITECT.md with: name, company, comment text, post URL
+Then send each one an email that:
+  - References the specific post they commented on
+  - Quotes or paraphrases what they said
+  - Connects it to [YOUR OFFER]
+  - Ends with a soft CTA
+Use is_html=True, no bare URLs, test-send to me first.
+Set a LinkedIn follow-up reminder for 7 days from now.
+```
+
+---
+
+### Why This Works Better Than Database Outreach
+
+| Method | Intent Signal | Personalisation | Response Rate |
+|--------|--------------|-----------------|---------------|
+| Apollo / database search | None — cold by definition | Generic | 1–3% |
+| Job posting signals | Hiring intent only | Moderate | 3–7% |
+| LinkedIn comment scraping | Active, public, topic-specific | Very high — you reference their exact words | 8–20% |
+
+When someone comments on a post, they've told you:
+- They care about this topic right now
+- They're active on LinkedIn
+- They're comfortable engaging publicly
+
+Your outreach isn't cold. It's the continuation of a conversation they already started.
+
+---
+
 ## Adding Your Own Skills
 
 Drop a new `.md` file into `skills/` and reference it in `CLAUDE.md`. The agent reads `skills/` at startup.

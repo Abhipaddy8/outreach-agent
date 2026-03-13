@@ -1,79 +1,306 @@
 # Outreach Agent
 
-Autonomous cold email agent powered by Claude Code. Tell it what you want — it finds leads, enriches, verifies, writes copy, sends, and tracks.
+An autonomous cold email agent powered by Claude Code. You tell it what you want in plain English. It researches targets, finds verified emails, writes personalised copy, sends, and tracks everything — session after session, with memory.
 
 ```
 You: "Find 20 AI CTOs at Series A startups and pitch my consulting offer"
-Agent: researches → enriches → verifies → writes copy → sends → tracks
+
+Agent:
+  → Searches Tavily for matching companies
+  → Finds decision maker names + roles
+  → Enriches via Prospeo to get verified emails
+  → Verifies deliverability via Instantly
+  → Writes personalised HTML emails per contact
+  → Sends via Gmail MCP
+  → Logs every contact to AERCHITECT.md
+  → Updates MEMORY.md with follow-up dates
 ```
 
 ---
 
-## Install
+## Quick Start
 
 ```bash
-# 1. Install Claude Code
 npm install -g @anthropic/claude-code
-
-# 2. Clone
 git clone https://github.com/Abhipaddy8/outreach-agent
 cd outreach-agent
-
-# 3. Run
 claude
 ```
 
-**That's it.** The agent walks you through the rest — step by step, verifying each connection before moving on.
+The agent handles the rest. On first run it walks you through a verified setup wizard — 7 steps, each tested before the next begins.
 
 ---
 
-## What the Agent Sets Up For You
+## How It Works
 
-On first run, the agent runs a **setup wizard** — 7 missions, each verified before the next starts:
+### The Brain — `CLAUDE.md`
 
-| # | Mission | What It Does |
-|---|---------|-------------|
-| S1 | File check | Confirms all required files are present |
-| S2 | Your profile | Asks your name, email, LinkedIn, offer — writes to memory |
-| S3 | Tavily | Tests a live search to confirm connection |
-| S4 | Prospeo | Tests email enrichment API |
-| S5 | Instantly | Tests email verification |
-| S6 | Gmail | Sends a test email to you — you confirm receipt |
-| S7 | Done | Marks setup complete, asks what you want to do |
+Every Claude Code session starts by reading `CLAUDE.md`. This file is the agent's operating system — it tells the agent:
 
-Each step either **passes** or tells you exactly what to fix. No guessing.
+- What it is and what it does
+- How to behave on startup (check setup, read missions, ask user)
+- The rules it must never break (no bare URLs, always test-send first, etc.)
+- The full pipeline in order
+- Where every file lives and what it's for
+
+`CLAUDE.md` is not code. It's a prompt. But it's authoritative — the agent treats it as law.
 
 ---
 
-## After Setup
+### Persistent Memory — `MEMORY.md`
 
-Just run `claude` and say what you want:
+This is what makes the agent stateful across sessions. Claude Code has no built-in memory between sessions — every conversation starts fresh. `MEMORY.md` solves this.
 
-- *"Find 15 founders at B2B SaaS companies under 50 people"*
-- *"Send a follow-up to everyone who hasn't replied in 7 days"*
-- *"Research AI agencies in Europe and send them a partnership email"*
+At the **start of every session**, the agent reads `MEMORY.md` and loads:
+- Your sender profile (name, email, LinkedIn, offer)
+- What's working and what isn't
+- Follow-up dates (who to chase and when)
+- Lessons from past mistakes
+- Active lead counts and campaign status
 
-The agent breaks it into a mission, executes, and logs everything to `AERCHITECT.md`.
+At the **end of every session**, the agent writes back to `MEMORY.md`:
+- New contacts added
+- Replies received
+- Follow-up dates scheduled
+- Any new lessons learned
+
+**Example — how memory comes back:**
+
+```
+Session 1 (Monday):
+  You: "Send 20 emails to AI CTOs"
+  Agent sends 20 emails, writes to MEMORY.md:
+    Follow-up due: 2026-03-20 — 20 contacts from Wave 1
+
+Session 2 (Thursday, different terminal, fresh context):
+  Agent reads MEMORY.md → sees follow-up due Mar 20
+  Agent: "You have 20 contacts due for follow-up on Mar 20. Want me to send that now?"
+```
+
+The agent never forgets. It just reads the file.
 
 ---
 
-## You'll Need Accounts For
+### Mission Queue — `.ai-guide/missions.md`
 
-| Tool | Purpose | Free Tier |
-|------|---------|-----------|
-| [Composio](https://composio.dev) | Connects Gmail, Apollo, Instantly | ✅ Yes |
-| [Tavily](https://tavily.com) | Research + lead discovery | ✅ 1,000 searches/mo |
-| [Prospeo](https://prospeo.io) | Email enrichment | ✅ Limited credits |
-| [Instantly](https://instantly.ai) | Email verification | ✅ Yes |
+Every piece of work gets written as a **mission** before execution starts. This file is the agent's task queue.
 
-The agent will ask for these keys during setup — you don't need them before running.
+When you tell the agent what you want:
+1. Agent writes it as a mission with steps
+2. Marks it `▶ Active`
+3. Executes step by step, ticking off each one
+4. Marks `✅ Complete` when done
+5. Asks what's next
+
+**Mission format:**
+```markdown
+## Wave 1 — AI CTO Outreach
+▶ Status: Active
+**Goal**: Find 20 AI CTOs at Series A startups and send consulting pitch
+
+Steps:
+- [x] Tavily search: "AI startup Series A CTO 2025"
+- [x] Extract 20 decision makers with company domains
+- [x] Enrich emails via Prospeo
+- [x] Verify via Instantly — drop invalids
+- [ ] Write personalised copy per contact
+- [ ] Send via Gmail
+- [ ] Update AERCHITECT.md
+```
+
+If a session ends mid-mission, the next session picks up exactly where it left off — the mission file shows which steps are done and which aren't.
 
 ---
 
-## Powered By
+### Contact Tracker — `AERCHITECT.md`
 
-- [Claude Code](https://claude.ai/code) — execution engine
-- [Tavily](https://tavily.com) — research
-- [Prospeo](https://prospeo.io) — enrichment
-- [Instantly](https://instantly.ai) — verification
-- [Composio](https://composio.dev) — Gmail + Apollo + Instantly connections
+Every contact the agent ever touches lives here. It's a running log of the entire outreach operation.
+
+**What it tracks:**
+- Every contact: name, title, company, email, verification status
+- Every send: timestamp, subject, touchpoint number
+- Every reply: what they said, what was sent back, current status
+- Batch progress: which waves have been sent
+- Session log: what happened in each session
+- Avatar intelligence: which company types respond, which don't
+
+**Why it matters:** After 10+ waves of outreach, you start to see patterns. The avatar intelligence section evolves automatically as the agent logs what's working.
+
+---
+
+### Pipeline Instructions — `skills/outreach.md`
+
+The agent's step-by-step execution manual. Every tool call, API endpoint, fallback strategy, and rule lives here.
+
+**Covers:**
+- Tavily search queries for lead discovery
+- Prospeo `/enrich-person` API (exact request format, headers, response parsing)
+- Email permutation fallback strategy (`first@` → `first.last@` → `flast@` → ...)
+- Instantly verification flow
+- Gmail send rules (HTML only, no bare URLs, test-send first)
+- PDF attachment via s3key (how to extract and reuse across sends)
+- AERCHITECT.md update instructions
+
+When you add a new tool or change an API, you update this file — the agent reads it fresh every session.
+
+---
+
+### System Decisions — `.ai-guide/architecture.md`
+
+A log of every architectural decision made. When the agent encounters a choice, it checks here first to avoid repeating past mistakes.
+
+**Example entries:**
+```
+2026-03-13 — Never paste bare URLs in emails
+  Reason: Caught on a 20-person send batch. Looks amateurish, hurts deliverability.
+  Rule: Always is_html=True + <a href="...">anchor text</a>
+
+2026-03-11 — first@ pattern dominates at small agencies
+  Reason: 100% hit rate vs first.last@ on 6/6 small Indian agencies
+  Rule: Always try first@ before first.last@
+```
+
+---
+
+## File Structure
+
+```
+outreach-agent/
+│
+├── CLAUDE.md                   ← Agent brain. Read first, every session.
+│                                 Contains: startup protocol, setup wizard,
+│                                 execution rules, pipeline overview
+│
+├── MEMORY.md                   ← Persistent memory across sessions.
+│                                 Contains: sender profile, what works,
+│                                 follow-up dates, lesson log, campaign status
+│
+├── AERCHITECT.md               ← Full contact tracker.
+│                                 Contains: all contacts, replies, batch progress,
+│                                 avatar intelligence, session log
+│
+├── .mcp.json                   ← MCP server connections.
+│                                 Composio (Gmail/Apollo/Instantly) + Tavily
+│
+├── .gitignore                  ← Excludes .env, data exports, .DS_Store
+│
+├── .ai-guide/
+│   ├── missions.md             ← Active + completed mission queue.
+│   │                             Agent writes missions here before executing.
+│   │                             Setup wizard missions pre-populated.
+│   └── architecture.md        ← System design + decisions log.
+│                                 Agent checks before making choices.
+│
+└── skills/
+    └── outreach.md             ← Full pipeline instructions.
+                                  Every API call, fallback, and rule.
+                                  Agent reads this during execution.
+```
+
+---
+
+## Setup Wizard (First Run)
+
+On first run the agent detects that `MEMORY.md` has unfilled placeholders and runs 7 setup missions. Each one tests the connection before moving on — no guessing, no silent failures.
+
+| Mission | What It Does | Pass Condition |
+|---------|-------------|----------------|
+| S1 — File Check | Reads all 6 required files | All files exist and readable |
+| S2 — Sender Profile | Asks your name, email, LinkedIn, offer | Written to MEMORY.md, no placeholders remain |
+| S3 — Tavily | Runs a live test search | Returns ≥1 result |
+| S4 — Prospeo | Calls `/enrich-person` with a test contact | Returns email or LinkedIn URL |
+| S5 — Instantly | Verifies a test email address | Returns valid/invalid/catchall status |
+| S6 — Gmail | Sends a test email to yourself | You confirm receipt |
+| S7 — Done | Writes `SETUP_COMPLETE: true` to MEMORY.md | Never runs again |
+
+If any step fails, the agent tells you exactly what to fix — not a generic error, a specific instruction.
+
+---
+
+## Use Cases
+
+### Job Search
+```
+"Find 15 CTOs at funded AI startups hiring remote engineers
+ and send them my portfolio"
+```
+Agent finds companies with hiring signals, enriches emails, sends portfolio with personalised hook per company.
+
+### Consulting Outreach
+```
+"Find VP Sales at B2B SaaS companies 50-200 employees
+ and pitch my AI outreach system"
+```
+Agent targets by title + company size + industry, writes copy that references their specific growth challenge.
+
+### Follow-Ups
+```
+"Send a follow-up to everyone who hasn't replied in 7 days"
+```
+Agent reads AERCHITECT.md, filters contacts sent 7+ days ago with no reply, writes a short follow-up, sends.
+
+### Pattern Interrupt
+```
+"Send the TechStack Tetris game to 20 AI engineers as a
+ conversation starter"
+```
+Agent writes a value-first email with the game link hyperlinked (not bare URL), no hard ask, soft CTA.
+
+### Agency Partnership
+```
+"Find AI development agencies in Europe under 50 people
+ and pitch open source tools collaboration"
+```
+Agent searches by geography + company type + size, personalises per agency.
+
+---
+
+## Tools Required
+
+| Tool | Purpose | Get It |
+|------|---------|--------|
+| [Claude Code](https://claude.ai/code) | Execution engine | `npm i -g @anthropic/claude-code` |
+| [Composio](https://composio.dev) | Connects Gmail, Apollo, Instantly | composio.dev — free tier |
+| [Tavily](https://tavily.com) | Research + lead discovery | tavily.com — 1,000 searches/mo free |
+| [Prospeo](https://prospeo.io) | Email enrichment from name + domain | prospeo.io — limited free credits |
+| [Instantly](https://instantly.ai) | Email verification | instantly.ai — free tier |
+
+---
+
+## Rules The Agent Never Breaks
+
+These are baked into `CLAUDE.md` and enforced every session:
+
+1. **No bare URLs** — always `is_html=True` + `<a href="...">anchor text</a>`
+2. **Test-send first** — sends 1 email to self before any bulk send
+3. **4+ permutation failures = drop** — if email can't be found, move on
+4. **Update tracker after every batch** — AERCHITECT.md is always current
+5. **Update memory at session end** — follow-up dates and lessons always written back
+
+---
+
+## Adding Your Own Skills
+
+Drop a new `.md` file into `skills/` and reference it in `CLAUDE.md`. The agent reads `skills/` at startup.
+
+Example — add a LinkedIn skill:
+```
+skills/
+├── outreach.md      ← cold email pipeline
+└── linkedin.md      ← LinkedIn DM pipeline (new)
+```
+
+In `CLAUDE.md`:
+```
+## SKILLS AVAILABLE
+- Cold email: skills/outreach.md
+- LinkedIn DM: skills/linkedin.md
+```
+
+The agent will use whichever skill matches the user's request.
+
+---
+
+## Contributing
+
+PRs welcome. If you add a new tool integration (Apollo, Hunter, Lemlist, etc.), add it to `skills/outreach.md` and update `.mcp.json` with the connection config.

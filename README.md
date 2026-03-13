@@ -1,20 +1,74 @@
 # Outreach Agent
 
-An autonomous cold email agent powered by Claude Code. You tell it what you want in plain English. It researches targets, finds verified emails, writes personalised copy, sends, and tracks everything — session after session, with memory.
+A fully autonomous, multi-channel outreach system built on Claude Code. It replaces the entire outbound stack — lead research, email enrichment, verification, personalised copy, sending, LinkedIn connection requests, follow-up sequencing, and long-term memory — with a single agent you talk to in plain English.
+
+This is not a wrapper around a SaaS tool. There is no dashboard, no monthly seat fee, no "credits" tier wall. It's an agent that reads files, calls APIs, controls a browser, and writes its own task queue. You own the whole stack.
+
+**What it can do in a single session:**
+- Source 50 leads from LinkedIn posts, funding announcements, job boards, or competitor reviews
+- Find verified decision maker emails via Prospeo or Apollo — one credit per person, no waste
+- Write and send personalised HTML emails referencing the exact signal that surfaced each lead
+- Send LinkedIn connection requests via your real Chrome session — no PhantomBuster, no Heyreach
+- Schedule follow-ups, write them to memory, and execute them automatically in the next session
+- Run on a daily loop with `/loop` — sourcing new leads, sending follow-ups, updating the tracker — without you touching it
+
+**The architecture in one line:**
+> `CLAUDE.md` is the brain. `MEMORY.md` is what it remembers. `missions.md` is what it's doing. `AERCHITECT.md` is everything it's ever sent.
 
 ```
-You: "Find 20 AI CTOs at Series A startups and pitch my consulting offer"
+You: "Find 20 AI CTOs at Series A startups, email them today,
+      and remind me to send LinkedIn requests in 7 days"
 
 Agent:
-  → Searches Tavily for matching companies
-  → Finds decision maker names + roles
-  → Enriches via Prospeo to get verified emails
-  → Verifies deliverability via Instantly
-  → Writes personalised HTML emails per contact
-  → Sends via Gmail MCP
-  → Logs every contact to AERCHITECT.md
-  → Updates MEMORY.md with follow-up dates
+  → Tavily: searches for Series A AI companies + CTO names
+  → Prospeo: /enrich-person → verified email per contact (1 credit each)
+  → Instantly: verifies deliverability, drops invalids
+  → Gmail: writes personalised HTML email per contact, test-sends to you first
+  → AERCHITECT.md: logs all 20 contacts with send date + LinkedIn URLs
+  → MEMORY.md: writes "LinkedIn follow-up due 2026-03-20 — 20 contacts from Wave 1"
+  → missions.md: marks Wave 1 complete, queues Wave 2
 ```
+
+Seven days later, fresh session, you type nothing:
+```
+Agent reads MEMORY.md → LinkedIn follow-up due today
+Agent: "You have 20 contacts from Wave 1 due for LinkedIn requests. Go?"
+You: "Go"
+Agent opens Chrome → visits each profile → sends personalised connection request → updates tracker
+```
+
+---
+
+## Table of Contents
+
+- [Quick Start](#quick-start)
+- [How It Works](#how-it-works)
+  - [The Brain — CLAUDE.md](#the-brain--claudemd)
+  - [Persistent Memory — MEMORY.md](#persistent-memory--memorymd)
+  - [Mission Queue — missions.md](#mission-queue--ai-guidemissionsmd)
+  - [Contact Tracker — AERCHITECT.md](#contact-tracker--aerchitectmd)
+  - [Pipeline Instructions — skills/outreach.md](#pipeline-instructions--skillsoutreachmd)
+  - [System Decisions — architecture.md](#system-decisions--ai-guidearchitecturemd)
+- [File Structure](#file-structure)
+- [Setup Wizard (First Run)](#setup-wizard-first-run)
+- [Email Outreach — Approaches, Use Cases & Long-Chain Workflows](#email-outreach--approaches-use-cases--long-chain-workflows)
+  - [Approach 1 — Direct Query (Apollo or Prospeo)](#approach-1--direct-query-apollo-or-prospeo)
+  - [Approach 2 — Research First, Then Enrich](#approach-2--research-first-then-enrich-tavily--apollo-or-prospeo)
+  - [Approach 3 — Credit-Efficient (Tavily → Enrich Once)](#approach-3--credit-efficient-tavily-finds-everything-enrich-once)
+  - [Long-Chain Use Cases](#long-chain-use-cases)
+  - [/loop — Self-Running Workflows](#loop--self-running-workflows)
+- [LinkedIn Outreach](#linkedin-outreach)
+  - [Claude in Chrome](#option-a--claude-in-chrome-recommended)
+  - [Playwright (Headless)](#option-b--playwright-headless--automated)
+  - [Full Multi-Channel Pipeline](#full-multi-channel-pipeline-example)
+- [Lead Generation — LinkedIn Comment Scraping](#lead-generation--finding-interested-people-before-they-know-you-exist)
+  - [The Pipeline](#the-pipeline)
+  - [How DOM Extraction Works](#how-dom-extraction-works)
+  - [Use Cases](#use-cases)
+- [Tools Required](#tools-required)
+- [Rules The Agent Never Breaks](#rules-the-agent-never-breaks)
+- [Adding Your Own Skills](#adding-your-own-skills)
+- [Contributing](#contributing)
 
 ---
 

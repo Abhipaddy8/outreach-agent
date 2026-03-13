@@ -279,6 +279,154 @@ These are baked into `CLAUDE.md` and enforced every session:
 
 ---
 
+## LinkedIn Outreach
+
+LinkedIn outreach is built into this agent's pipeline — but it works differently from email. There's no API key to add, no third-party tool required. You do not need Heyreach, PhantomBuster, Expandi, or any LinkedIn automation SaaS. The agent uses your real, logged-in Chrome session.
+
+That said, if you already have a Heyreach or PhantomBuster API key and want to use it, you can — just tell the agent: *"Add LinkedIn outreach via Heyreach API"* and provide the key. The agent will add it as a skill and use it. Both paths work.
+
+---
+
+### Two Ways LinkedIn Works Here
+
+#### Option A — Claude in Chrome (Recommended)
+
+Claude in Chrome is a browser extension that lets the agent see and control your Chrome browser in real time. It uses your actual logged-in LinkedIn session — no credentials stored, no scraping, no API limits. It reads the page visually and clicks, types, and scrolls like a human.
+
+**How to set it up:**
+1. Install the [Claude in Chrome extension](https://chromewebstore.google.com/detail/claude-code/...)
+2. Log in to LinkedIn in Chrome as normal
+3. Tell the agent: *"Use Claude in Chrome for LinkedIn"*
+
+**How it sends connection requests:**
+```
+Agent reads AERCHITECT.md → finds contacts flagged for LinkedIn follow-up
+  → Opens Chrome tab to linkedin.com/search/results/people/
+  → Searches by name + company
+  → Navigates to profile
+  → Clicks "Connect" → clicks "Add a note"
+  → Types a personalised message (generated from MEMORY.md context)
+  → Clicks "Send"
+  → Updates AERCHITECT.md: touchpoint added, date logged
+  → Waits 45–90 seconds before next request (human-like pacing)
+```
+
+**Commands you can give it:**
+- `"Send connection requests to everyone in AERCHITECT.md flagged for LinkedIn"`
+- `"Connect with the 10 people from Wave 1 who haven't replied to email"`
+- `"Visit each profile, check their current role, update the tracker"`
+- `"Send a LinkedIn DM to Divam Jain at Zeplyn"`
+
+**Limits to respect (built into the agent):**
+- Max 20 connection requests per day (LinkedIn's safe threshold)
+- 45–90 second gap between each action
+- Stop if LinkedIn shows a "limit reached" warning
+- Never run during unsociable hours (agent checks system time)
+
+---
+
+#### Option B — Playwright (Headless / Automated)
+
+Playwright runs a headless Chromium browser in the background. No visible window. Good for running scheduled LinkedIn tasks without being at your computer.
+
+**How it works:**
+```
+Agent launches Playwright browser
+  → Loads LinkedIn session from saved cookies (you export these once)
+  → Navigates to target profile URLs
+  → Clicks Connect → types message → sends
+  → Closes browser, logs results to AERCHITECT.md
+```
+
+**To use Playwright:**
+1. Install: `npm install playwright`
+2. Export your LinkedIn cookies once: `npx playwright codegen linkedin.com` — log in, save cookies to `data/linkedin-cookies.json`
+3. Tell the agent: *"Use Playwright for LinkedIn outreach"*
+
+**Playwright vs Claude in Chrome:**
+
+| | Claude in Chrome | Playwright |
+|--|-----------------|------------|
+| Setup | Install extension | `npm install playwright` + cookie export |
+| Runs | Visible Chrome window | Headless, background |
+| Detection risk | Lower (real browser, real session) | Slightly higher (automated signals) |
+| Best for | Interactive sessions, one-off sends | Scheduled, unattended runs |
+| Scheduling | Agent sets a reminder in MEMORY.md | Can run via cron or agent trigger |
+
+---
+
+### Full Multi-Channel Pipeline Example
+
+```
+You: "Find 50 CTOs at AI startups, send them an email,
+      add them to the tracker, and on March 20 remind me
+      to send LinkedIn connection requests"
+```
+
+**What the agent does:**
+
+```
+Mission: Wave 1 — AI CTO Multi-Channel
+
+Step 1 — Research (Tavily)
+  → Searches "AI startup CTO 2025 Series A"
+  → Extracts 50 names + company domains + LinkedIn URLs
+
+Step 2 — Enrich (Prospeo)
+  → POST /enrich-person for each
+  → Gets verified email per contact
+
+Step 3 — Verify (Instantly)
+  → Checks deliverability
+  → Drops invalids, keeps Valid + Catchall
+
+Step 4 — Email Send (Gmail)
+  → Writes personalised HTML email per contact
+  → Test-sends to self first
+  → Sends to all verified contacts
+  → Logs to AERCHITECT.md: email sent, date, subject
+
+Step 5 — Tracker Update (AERCHITECT.md)
+  → Adds all 50 contacts with status: ✉️ Email Sent
+  → Flags each with LinkedIn URL for follow-up
+  → Sets follow-up date: 2026-03-20
+
+Step 6 — Memory Update (MEMORY.md)
+  → Writes: "2026-03-20 — LinkedIn connection requests due for Wave 1 (50 contacts)"
+```
+
+**On March 20, new session:**
+```
+Agent reads MEMORY.md → sees LinkedIn follow-up due today
+Agent: "You have 50 contacts from Wave 1 due for LinkedIn connection requests.
+        Want me to start now? I'll use Claude in Chrome at 20/day."
+
+You: "Go"
+
+Agent runs Claude in Chrome:
+  → Reads all 50 LinkedIn URLs from AERCHITECT.md
+  → Sends connection requests in batches of 20/day
+  → Personalises each note: "Hi [Name], I emailed you last week about [topic]..."
+  → Updates AERCHITECT.md per send: LinkedIn Request Sent, date
+  → Schedules Day 2 + Day 3 reminder in MEMORY.md for remaining 30
+```
+
+---
+
+### LinkedIn Skill File
+
+To activate LinkedIn outreach, tell the agent:
+
+```
+"Add LinkedIn as a skill using Claude in Chrome"
+```
+
+The agent will create `skills/linkedin.md` with the full pipeline and reference it in `CLAUDE.md`. From that point on, any outreach request can include a LinkedIn step automatically.
+
+Or add it manually: drop `skills/linkedin.md` into the skills folder with your preferred method (Claude in Chrome or Playwright) and the agent will pick it up on next session start.
+
+---
+
 ## Adding Your Own Skills
 
 Drop a new `.md` file into `skills/` and reference it in `CLAUDE.md`. The agent reads `skills/` at startup.

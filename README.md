@@ -57,6 +57,7 @@ Agent opens Chrome → visits each profile → sends personalised connection req
   - [Approach 3 — Credit-Efficient (Tavily → Enrich Once)](#approach-3--credit-efficient-tavily-finds-everything-enrich-once)
   - [Long-Chain Use Cases](#long-chain-use-cases)
   - [/loop — Self-Running Workflows](#loop--self-running-workflows)
+  - [/agent-teams — Autonomous Agent Teams on Cron](#agent-teams--autonomous-agent-teams-on-cron)
 - [LinkedIn Outreach](#linkedin-outreach)
   - [Claude in Chrome](#option-a--claude-in-chrome-recommended)
   - [Playwright (Headless)](#option-b--playwright-headless--automated)
@@ -541,6 +542,198 @@ You check in when you want. The campaign runs itself.
 - `AERCHITECT.md` — every contact logged. The agent never re-contacts the same person because it checks the tracker before every send
 
 The combination of these three files makes the agent stateful across arbitrary time gaps. A `/loop` that ran yesterday picks up exactly where it left off today — even if the session crashed, the machine rebooted, or you paused for a week.
+
+---
+
+### `/agent-teams` — Autonomous Agent Teams on Cron
+
+`/loop` runs one agent on a schedule. `/agent-teams` builds a **full team** — multiple agents with defined roles, a shared mission queue, and persistent memory — all wired to cron and running while you sleep.
+
+The difference: `/loop` re-runs the same prompt. `/agent-teams` creates a structured wave-by-wave mission plan, writes it to disk, and the orchestrator agent wakes up every N minutes to read the plan, execute the next step, write its results to memory, and advance the mission. The team never loses state — even if your laptop restarts, the next cron run reads the files and continues exactly where it left off.
+
+**Use cases:**
+- Run a 3-wave outreach campaign fully unattended — research wave, send wave, follow-up wave
+- Scrape LinkedIn posts overnight, qualify leads, have emails ready to review in the morning
+- Monitor for funding signals daily, enrich and send within 24 hours automatically
+- Any multi-step job you'd currently babysit manually
+
+---
+
+#### How It Works
+
+```
+You: /agent-teams "run a 3-wave outreach campaign targeting AI CTOs at funded startups"
+
+Agent creates:
+  .ai-guide/missions.md       ← Wave 1 (▶ active), Wave 2, Wave 3 defined
+  .ai-guide/agent-team.md     ← Orchestrator role + any specialist agents
+  .ai-guide/memory/session.md ← Blank state file — agents write here after every run
+
+CronCreate fires every 30 min with this standing prompt:
+  "Read missions.md. Find ▶. Execute it.
+   Write what you did to memory/session.md.
+   Mark ✅, activate next ▶. Stop if blocker."
+```
+
+Every cron run:
+1. Reads `missions.md` — finds the active wave
+2. Reads `memory/session.md` — picks up from where the last run stopped
+3. Executes the mission (research, enrich, send, follow-up — whatever the wave requires)
+4. Writes structured output back to `memory/session.md`
+5. Advances `missions.md` to the next wave if done
+
+---
+
+#### Setup
+
+**Step 1 — Install the skill**
+
+```bash
+git clone https://github.com/Abhipaddy8/outreach-agent
+cd outreach-agent
+./install.sh
+```
+
+This copies `skills/agent-teams.md` into `~/.claude/skills/`. The `/agent-teams` command is now available in any Claude Code session.
+
+**Step 2 — Keep your laptop awake**
+
+Agent teams run on cron. Cron only fires while the Claude Code session is active and the laptop is on. If your Mac sleeps, cron pauses.
+
+Before you start a team and step away, run this in a separate terminal window and leave it open:
+
+```bash
+caffeinate -i
+```
+
+This prevents your Mac from sleeping for as long as the terminal stays open. Kill it with `Ctrl+C` when you're done for the day.
+
+> **Why this matters:** A cron set to every 30 minutes will miss its window if your Mac is asleep. `caffeinate -i` keeps the CPU active so cron fires on schedule. It does not prevent your screen from dimming — just prevents the system from sleeping.
+
+**Step 3 — Watch your context window**
+
+Claude Code has a context window limit. If an agent team runs for many hours across many cron fires, the context fills up. When it does, the agent starts losing track of earlier steps.
+
+To prevent this, run `/compact` every 40–50 minutes while the team is active. `/compact` summarises the conversation history and frees up context — the agent keeps working without losing the thread.
+
+```
+Every ~45 minutes while team is running:
+  1. Type /compact in the Claude Code session
+  2. Session compresses — agent continues
+  3. On next cron fire, agent reads missions.md + session.md to re-orient
+```
+
+Because the agent writes its state to `memory/session.md` after every run, `/compact` doesn't break anything. The files are the memory — not the conversation.
+
+---
+
+#### How to Use It
+
+Give it a plain English brief — the skill figures out the wave structure:
+
+```
+/agent-teams "research 30 VC-backed AI startups, find their CTOs,
+              enrich emails, and send a personalised pitch —
+              run every 30 minutes"
+```
+
+Or be more specific:
+
+```
+/agent-teams "
+  Wave 1: Use Tavily to find 20 AI companies that raised Series A in 2025.
+           Extract CEO or CTO name + company domain. Write to session.md.
+  Wave 2: Enrich emails via Prospeo for everyone in session.md.
+           Verify via Instantly. Drop invalids.
+  Wave 3: Send personalised HTML email to all verified contacts.
+           Update AERCHITECT.md. Write follow-up dates to MEMORY.md.
+  Interval: every 45 minutes
+"
+```
+
+After running `/agent-teams`, it will print a summary of the team, the files it created, and the cron schedule. That's your confirmation it's running.
+
+---
+
+#### Checking Progress
+
+While the team runs, check `memory/session.md` to see what the last run did:
+
+```
+.ai-guide/memory/session.md
+
+## Last Run
+Date: 2026-03-14
+Action: Completed Wave 1 — found 20 companies, wrote to session.md
+
+## Current State
+Wave 1 complete. Wave 2 active.
+
+## Output
+20 companies: [Company A, Company B, ...]
+
+## Next Action
+Enrich emails via Prospeo for 20 contacts in session.md
+```
+
+Check `missions.md` to see wave progress:
+
+```
+## Wave 1 — Research ✅
+## Wave 2 — Enrich ▶
+## Wave 3 — Send
+```
+
+---
+
+#### If the Team Hits a Blocker
+
+If the orchestrator can't proceed — API key missing, rate limit hit, ambiguous instruction — it writes the blocker to `memory/session.md` under **Blockers** and stops. It does not retry. It does not guess.
+
+```
+## Blockers
+Prospeo API returned 401 — key may be expired or missing.
+Waiting for human. No action taken on Wave 2.
+```
+
+Read the file, fix the issue, then trigger the orchestrator once manually to resume:
+
+```
+Paste the orchestrator prompt directly into the Claude Code session.
+The agent reads session.md, sees the blocker is resolved, and continues.
+```
+
+---
+
+#### Example Teams
+
+**Outreach campaign (3 waves):**
+```
+/agent-teams "Wave 1: research 20 AI CTOs. Wave 2: enrich + verify emails.
+              Wave 3: send personalised email + update tracker. Every 30 min."
+```
+
+**Overnight lead scraper:**
+```
+/agent-teams "Scrape comments from the top 5 LinkedIn posts about AI sales tools.
+              Extract founder/CEO commenters. Enrich their emails.
+              Save qualified leads to session.md. Run every 20 min."
+```
+
+**Funding signal monitor:**
+```
+/agent-teams "Every hour: search Tavily for AI startups that announced Series A today.
+              Cross-check AERCHITECT.md — skip already-contacted companies.
+              For new ones: enrich CTO email, send funding congrats email."
+```
+
+---
+
+#### Cron Behaviour
+
+- Cron jobs created by `/agent-teams` auto-expire after **3 days**
+- After 3 days, restart the session and run `/agent-teams` again with the same brief — it reads the existing `missions.md` and continues from the last completed wave
+- To cancel a team early: `CronList` to find the job ID, then `CronDelete <id>`
 
 ---
 

@@ -152,3 +152,11 @@ Full detail: `skills/outreach.md`
 | `AERCHITECT.md` | Full contact tracker |
 | `MEMORY.md` | Persistent memory — lessons, follow-ups, what works |
 | `skills/outreach.md` | Full pipeline instructions + API keys |
+| `skills/agent-teams.md` | Spin up autonomous agent teams on cron |
+
+## SKILLS
+
+| Command | What it does |
+|---------|-------------|
+| `/outreach` | Full cold email pipeline — research, enrich, verify, send |
+| `/agent-teams` | Parse a brief → create missions + memory docs → CronCreate orchestrator |

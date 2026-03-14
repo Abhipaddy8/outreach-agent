@@ -588,13 +588,21 @@ Every cron run:
 
 **Step 1 — Install the skill**
 
+If you haven't cloned the repo yet:
+
 ```bash
 git clone https://github.com/Abhipaddy8/outreach-agent
 cd outreach-agent
 ./install.sh
 ```
 
-This copies `skills/agent-teams.md` into `~/.claude/skills/`. The `/agent-teams` command is now available in any Claude Code session.
+If you already have the repo cloned, install with a single curl — no pull required:
+
+```bash
+curl -o ~/.claude/skills/agent-teams.md https://raw.githubusercontent.com/Abhipaddy8/outreach-agent/main/skills/agent-teams.md
+```
+
+Either way, the `/agent-teams` command is now available in any Claude Code session.
 
 **Step 2 — Keep your laptop awake**
 

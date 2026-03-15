@@ -153,6 +153,17 @@ Full detail: `skills/outreach.md`
 | `MEMORY.md` | Persistent memory — lessons, follow-ups, what works |
 | `skills/outreach.md` | Full pipeline instructions + API keys |
 | `skills/agent-teams.md` | Spin up autonomous agent teams on cron |
+| `skills/lead-borrow.md` | Borrow leads from influencer LinkedIn posts |
+| `skills/daily-icp-feed.md` | Daily ICP post monitor + comment drafts |
+| `skills/content-reflect.md` | Own content performance analysis |
+| `skills/content-compare.md` | Competitor content analysis + gap finder |
+| `skills/qualify-audience.md` | Qualify engagers on own posts as warm leads |
+| `skills/signal-monitor.md` | Daily signal tracking (funding, jobs, posts) |
+| `docs/apify-strategy.md` | READ/WRITE architecture reference |
+| `config/icp-keywords.md` | ICP keyword config (created by /daily-icp-feed setup) |
+| `config/competitors.md` | Competitor list (created by /content-compare setup) |
+| `config/icp-scoring.md` | ICP scoring criteria (created by /qualify-audience setup) |
+| `config/signal-criteria.md` | Signal criteria (created by /signal-monitor setup) |
 
 ## SKILLS
 
@@ -160,3 +171,9 @@ Full detail: `skills/outreach.md`
 |---------|-------------|
 | `/outreach` | Full cold email pipeline — research, enrich, verify, send |
 | `/agent-teams` | Parse a brief → create missions + memory docs → CronCreate orchestrator |
+| `/lead-borrow` | Borrow leads from influencer LinkedIn posts → qualify → connect |
+| `/daily-icp-feed` | Daily: find top 20 ICP posts + draft personalized comments |
+| `/content-reflect` | Analyze own LinkedIn post performance → patterns + recommendations |
+| `/content-compare` | Analyze competitor content → find gaps + opportunities |
+| `/qualify-audience` | Qualify likers/commenters on own posts → warm lead pipeline |
+| `/signal-monitor` | Daily: scan funding rounds, job postings, ICP posts → action items |

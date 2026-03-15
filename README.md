@@ -68,6 +68,16 @@ Agent opens Chrome → visits each profile → sends personalised connection req
   - [Use Cases](#use-cases)
 - [Tools Required](#tools-required)
 - [Rules The Agent Never Breaks](#rules-the-agent-never-breaks)
+- [Skills — Slash Commands](#skills--slash-commands)
+  - [/outreach — Cold Email Pipeline](#outreach--cold-email-pipeline)
+  - [/lead-borrow — Borrow Leads from Influencer Posts](#lead-borrow--borrow-leads-from-influencer-posts)
+  - [/daily-icp-feed — Daily ICP Post Monitor](#daily-icp-feed--daily-icp-post-monitor)
+  - [/qualify-audience — Qualify Your Own Post Engagers](#qualify-audience--qualify-your-own-post-engagers)
+  - [/content-reflect — Own Content Performance](#content-reflect--own-content-performance)
+  - [/content-compare — Competitor Analysis](#content-compare--competitor-analysis)
+  - [/signal-monitor — Daily Signal Tracking](#signal-monitor--daily-signal-tracking)
+  - [/agent-teams — Autonomous Agent Teams](#agent-teams--autonomous-agent-teams)
+  - [Scaling with Apify](#scaling-with-apify)
 - [Adding Your Own Skills](#adding-your-own-skills)
 - [Contributing](#contributing)
 
@@ -1107,9 +1117,329 @@ Your outreach isn't cold. It's the continuation of a conversation they already s
 
 ---
 
+## Skills — Slash Commands
+
+The outreach agent ships with 8 skills. Each one is a complete pipeline you invoke with a slash command. Type it and the agent runs the full workflow — setup wizard on first run, then execution.
+
+Every skill works at two scales:
+
+- **Small scale (default)** — uses Tavily for research and your own Chrome session for LinkedIn. Free, works immediately, good for 10-20 leads per session. No extra APIs needed.
+- **Larger scale (with Apify)** — add Apify MCP for LinkedIn scraping on foreign proxies. Your account stays invisible for READ operations. Handles 100+ comments, bulk profile qualification, competitor monitoring. See [Scaling with Apify](#scaling-with-apify).
+
+---
+
+### `/outreach` — Cold Email Pipeline
+
+The core skill. Finds leads, enriches emails, verifies, writes personalised copy, sends.
+
+```
+You: /outreach
+Agent: "Campaign type? Target criteria? How many?"
+You: "10 AI CTOs at Series A startups, job application angle"
+
+Agent runs:
+  Tavily → find companies + decision makers
+  Prospeo → enrich email (linkedin_url method, 1 credit each)
+  Instantly → verify deliverability
+  Gmail → send personalised HTML email per contact
+  AERCHITECT.md → log everything
+```
+
+**Invoke**: `/outreach` — agent asks 3 questions, then executes.
+
+**On a cron (agent-teams)**:
+```
+You: /agent-teams
+Brief: "Source 20 leads, enrich, verify, send cold emails. Run every 8 hours.
+       Target: VP Sales at 50-500 employee B2B SaaS. Angle: outreach agent repo."
+```
+The orchestrator wakes every 8 hours, reads the mission, runs the outreach pipeline, updates the tracker, queues the next batch.
+
+---
+
+### `/lead-borrow` — Borrow Leads from Influencer Posts
+
+Find an influencer's LinkedIn post about your topic. Extract everyone who commented or liked it. Qualify them against your ICP. Send connection requests to the fits.
+
+```
+You: /lead-borrow
+Agent: "Which LinkedIn post?"
+You: "Jason Bay's AI SDR post"
+
+Agent runs:
+  Navigate to post → extract commenters (DOM) + likers (reactions modal)
+  Identifier agent: reads every name, headline, company
+  Qualifier agent: applies ICP filter — keeps sales leaders, drops GTM vendors
+  Connector: sends 10 personalised connection requests
+  Copy agent: writes conversation openers for when they accept
+```
+
+**How it extracts**: By default, uses JavaScript DOM extraction on your logged-in LinkedIn session. Gets commenter names, headlines, profile slugs, and comment text in 2-3 JS calls. Likers are limited (~10 at a time due to modal lazy-loading). With Apify, gets all likers and commenters at scale with zero risk to your account.
+
+**Invoke**: `/lead-borrow` — give it a post URL or person + topic, agent handles the rest.
+
+**On a cron (agent-teams)**:
+```
+You: /agent-teams
+Brief: "Every day, find Jason Bay's latest post, extract commenters,
+       qualify against ICP, send 10 connection requests. Run daily at 9am IST."
+```
+
+---
+
+### `/daily-icp-feed` — Daily ICP Post Monitor
+
+Finds the top 20 LinkedIn posts matching your ICP keywords from the last 24 hours. Ranks by engagement. Drafts a personalised comment for each one. You approve which to post.
+
+```
+You: /daily-icp-feed
+
+Agent runs:
+  Tavily/Apify → search LinkedIn for ICP keywords (AI SDR, outbound, cold email)
+  Rank by engagement score: (comments × 3) + (likes × 1) + (shares × 2)
+  Check memory → skip posts already commented on
+  Draft personalised 2-4 sentence comment per post (peer tone, no "Great post!" energy)
+  Save to daily-feeds/feed-[date].md
+  You review → approve → agent posts via Chrome
+```
+
+**First run setup**: Agent asks you to define your ICP keywords and saves them to `config/icp-keywords.md`. These persist across sessions.
+
+**Invoke**: `/daily-icp-feed` — agent finds posts and drafts comments. You approve before anything gets posted.
+
+**On a cron (agent-teams)**:
+```
+You: /agent-teams
+Brief: "Run /daily-icp-feed every day at 6pm IST.
+       Keywords: AI SDR, outbound automation, cold email, sales pipeline.
+       Save feed to daily-feeds/. I'll review and post manually."
+```
+
+---
+
+### `/qualify-audience` — Qualify Your Own Post Engagers
+
+After you post on LinkedIn and get engagement, this skill scrapes everyone who liked or commented, scores them against your ICP, and routes qualified leads into your outreach pipeline.
+
+```
+You: /qualify-audience
+Agent: "Which of your posts?"
+You: [paste LinkedIn post URL]
+
+Agent runs:
+  DOM/Apify → extract all likers + commenters
+  Score each person against ICP criteria (config/icp-scoring.md)
+  Score 7+ → qualified warm lead
+  Prospeo → enrich email for qualified leads
+  Route: connection request (warm note) OR email (if email found)
+  Save to AERCHITECT.md as warm leads
+```
+
+**Key difference from `/lead-borrow`**: Lead-borrow scrapes OTHER people's posts (cold audience). Qualify-audience scrapes YOUR posts (warm audience — they already engaged with you). Warm leads convert 3-5x higher.
+
+**First run setup**: Agent asks you to define your ICP scoring criteria — what titles, company types, and signals earn points. Saves to `config/icp-scoring.md`.
+
+**Invoke**: `/qualify-audience` — give it your post URL, agent qualifies and routes.
+
+**On a cron (agent-teams)**:
+```
+You: /agent-teams
+Brief: "Every 2 days, check my latest LinkedIn post, qualify all engagers,
+       enrich emails for anyone scoring 7+, draft connection notes.
+       Save qualified leads to AERCHITECT.md."
+```
+
+---
+
+### `/content-reflect` — Own Content Performance
+
+Analyses your last 10 LinkedIn posts to find what's working, what's not, and what to post next.
+
+```
+You: /content-reflect
+
+Agent runs:
+  DOM/Apify → scrape your activity page
+  Extract per post: text, likes, comments, shares, date, format
+  Analyse: which hooks perform, which formats get comments, best posting times
+  Compare top 3 vs bottom 3 posts → find the pattern
+  Write recommendations for next 3 posts
+  Save to memory/content-analysis.md
+```
+
+**What it tells you**: Your best hook type (question vs stat vs contrarian), best format (text vs image vs carousel), best posting time, and which topics your audience actually engages with vs scrolls past.
+
+**Invoke**: `/content-reflect` — no input needed, agent reads your profile.
+
+**On a cron (agent-teams)**:
+```
+You: /agent-teams
+Brief: "Run /content-reflect every Sunday evening.
+       Analyse my last 10 posts, update content-analysis.md,
+       recommend 3 posts for the coming week."
+```
+
+---
+
+### `/content-compare` — Competitor Analysis
+
+Analyses your competitors' LinkedIn content to find gaps and opportunities you can exploit.
+
+```
+You: /content-compare
+
+Agent runs:
+  Tavily/Apify → scrape each competitor's last 5 posts
+  Analyse: content frequency, hook patterns, topics, engagement, audience
+  Cross-compare all competitors:
+    → Topics everyone covers (oversaturated)
+    → Topics some cover (differentiation opportunity)
+    → Topics nobody covers (blue ocean)
+  Write recommendations tied to specific gaps
+  Save to memory/competitor-analysis.md
+```
+
+**First run setup**: Agent asks for your top 3-5 competitors. Saves to `config/competitors.md` — a simple table with name, LinkedIn URL, niche. Persists across sessions. Add or remove competitors anytime.
+
+**Invoke**: `/content-compare` — agent reads competitor list and analyses.
+
+**On a cron (agent-teams)**:
+```
+You: /agent-teams
+Brief: "Run /content-compare every 2 weeks on Monday.
+       Competitors: [list]. Update competitor-analysis.md.
+       Flag any new content gaps since last run."
+```
+
+---
+
+### `/signal-monitor` — Daily Signal Tracking
+
+Scans the web daily for buying signals — funding rounds, job postings, and ICP-relevant LinkedIn posts. Prioritises by urgency. Drafts an action item for each signal.
+
+```
+You: /signal-monitor
+
+Agent runs:
+  Tavily → scan funding news (Series A, Seed in target industries)
+  Tavily → scan job postings (titles that signal need for your offer)
+  Tavily/Apify → scan LinkedIn posts from ICP decision makers
+  Prioritise:
+    🔴 IMMEDIATELY — funded company (hot money, act today)
+    🟡 TODAY — job posting (active need)
+    🟢 THIS WEEK — relevant post (engagement play)
+  Prospeo → enrich CEO/CTO emails for funding + job signals
+  Draft email or comment for each signal
+  Save to signal-feeds/signals-[date].md
+  You review and approve
+```
+
+**First run setup**: Agent asks 3 questions — target industries, job titles that signal a need, and LinkedIn topics to watch. Saves to `config/signal-criteria.md`.
+
+**Invoke**: `/signal-monitor` — agent scans and builds the signal feed. You approve actions.
+
+**On a cron (agent-teams)**:
+```
+You: /agent-teams
+Brief: "Run /signal-monitor every day at 7am IST.
+       Industries: SaaS, fintech.
+       Job signals: SDR, Head of Sales.
+       LinkedIn topics: AI SDR, outbound, pipeline.
+       Save to signal-feeds/. I'll review and approve sends."
+```
+
+---
+
+### `/agent-teams` — Autonomous Agent Teams
+
+Not an outreach skill — a meta-skill. Takes any brief and turns it into a self-running agent team with missions, memory, and a cron schedule.
+
+```
+You: /agent-teams
+Brief: "Find 20 leads per day, email them, follow up after 3 days.
+       Run every 8 hours for 3 days."
+
+Agent creates:
+  .ai-guide/missions.md → 3 waves (source, send, follow-up)
+  .ai-guide/agent-team.md → team roster (researcher, sender, follow-up agent)
+  .ai-guide/memory/session.md → persistent state between runs
+  CronJob → fires orchestrator every 8 hours
+  Orchestrator reads mission → fires sub-agent → validates → advances
+```
+
+**Any skill can become a cron job** by wrapping it in an agent-team brief. The examples under each skill above show how.
+
+**Invoke**: `/agent-teams` — describe what you want automated.
+
+---
+
+### Scaling with Apify
+
+Every skill works out of the box with Tavily (web search) and your own Chrome session (DOM extraction). This is fine for 10-20 leads per session, 1-2 posts per day.
+
+When you need more:
+
+| Scale | What changes | Why |
+|-------|-------------|-----|
+| 50+ comments per post | Add Apify | DOM extraction risks your LinkedIn account at volume |
+| 100+ profile qualifications | Add Apify | Bulk profile visits get flagged. Apify uses rotating proxies |
+| Daily competitor monitoring | Add Apify | 5 competitors × 5 posts = 25 page loads per day on your session |
+| All 77 likers from a post | Add Apify | LinkedIn's reactions modal lazy-loads ~10 at a time. Apify gets all |
+
+**The golden rule**: If your name doesn't need to appear, use Apify. If it does (connection request, DM, comment, like), use your own Chrome session.
+
+**Setup** (5 minutes):
+1. Get an API key at [console.apify.com](https://console.apify.com)
+2. Add to `.mcp.json`:
+```json
+{
+  "mcpServers": {
+    "apify": {
+      "command": "npx",
+      "args": ["-y", "@apify/mcp-server-rag-web-browser"],
+      "env": {
+        "APIFY_TOKEN": "your-token-here"
+      }
+    }
+  }
+}
+```
+3. Skills automatically detect Apify and use it for READ operations. No code changes needed.
+
+See `docs/apify-strategy.md` for the full architecture reference.
+
+---
+
 ## Adding Your Own Skills
 
-Drop a new `.md` file into `skills/` and reference it in `CLAUDE.md`. The agent reads `skills/` at startup.
+Skills are `.md` files that tell the agent what to do. Drop one into `.claude/skills/` with YAML frontmatter and it becomes a slash command.
+
+```
+.claude/skills/
+├── my-new-skill/
+│   └── SKILL.md
+```
+
+SKILL.md format:
+```yaml
+---
+name: my-new-skill
+description: What this skill does (one line — Claude uses this to decide when to load it)
+---
+
+# /my-new-skill — Human-readable title
+
+## When to use
+Describe when the agent should use this skill.
+
+## Setup Wizard (First Run)
+Check dependencies, test APIs, create config files.
+
+## Instructions
+Step-by-step pipeline the agent follows.
+```
+
+Run `./install.sh` to install your new skill globally. Or just restart Claude Code — project-level skills in `.claude/skills/` are auto-discovered.
 
 Example — add a LinkedIn skill:
 ```

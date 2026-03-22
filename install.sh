@@ -18,6 +18,8 @@ SKILLS=(
   content-compare
   qualify-audience
   signal-monitor
+  autoresearch
+  apify-skills
 )
 
 echo "Installing outreach-agent skills..."
@@ -71,3 +73,5 @@ echo "  /content-reflect   — own content performance analysis"
 echo "  /content-compare   — competitor content analysis"
 echo "  /qualify-audience   — qualify engagers on own posts"
 echo "  /signal-monitor    — daily signal tracking (funding, jobs, posts)"
+echo "  /autoresearch      — Karpathy-style A/B optimization loop"
+echo "  /apify             — Apify scraping skills (50+ platforms)"

@@ -21,6 +21,13 @@
       "command": "npx",
       "args": ["-y", "@composio/mcp@latest", "--api-key", "YOUR_COMPOSIO_API_KEY"],
       "env": {}
+    },
+    "apify": {
+      "command": "npx",
+      "args": ["-y", "@apify/mcp-server@latest"],
+      "env": {
+        "APIFY_TOKEN": "YOUR_APIFY_TOKEN"
+      }
     }
   }
 }

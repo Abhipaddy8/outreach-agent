@@ -78,6 +78,14 @@ Agent opens Chrome → visits each profile → sends personalised connection req
   - [/signal-monitor — Daily Signal Tracking](#signal-monitor--daily-signal-tracking)
   - [/agent-teams — Autonomous Agent Teams](#agent-teams--autonomous-agent-teams)
   - [Scaling with Apify](#scaling-with-apify)
+- [Autoresearch — Autonomous Optimization Loop](#autoresearch--autonomous-optimization-loop)
+  - [The Loop](#the-autoresearch-loop)
+  - [What It Optimizes](#what-autoresearch-optimizes)
+  - [Example Session](#autoresearch-example-session)
+- [Apify Agent Skills — Scraping Superpowers](#apify-agent-skills--scraping-superpowers)
+  - [The 8 Skills](#the-8-apify-skills)
+  - [How They Map to Outreach Skills](#how-apify-maps-to-outreach-skills)
+  - [Power Combos](#apify-power-combos)
 - [Adding Your Own Skills](#adding-your-own-skills)
 - [Contributing](#contributing)
 
@@ -233,33 +241,48 @@ A log of every architectural decision made. When the agent encounters a choice, 
 outreach-agent/
 │
 ├── CLAUDE.md                   ← Agent brain. Read first, every session.
-│                                 Contains: startup protocol, setup wizard,
-│                                 execution rules, pipeline overview
-│
 ├── MEMORY.md                   ← Persistent memory across sessions.
-│                                 Contains: sender profile, what works,
-│                                 follow-up dates, lesson log, campaign status
-│
 ├── AERCHITECT.md               ← Full contact tracker.
-│                                 Contains: all contacts, replies, batch progress,
-│                                 avatar intelligence, session log
-│
-├── .mcp.json                   ← MCP server connections.
-│                                 Composio (Gmail/Apollo/Instantly) + Tavily
-│
+├── .mcp.json                   ← MCP servers (Gmail, Tavily, Instantly, Apollo, Apify)
 ├── .gitignore                  ← Excludes .env, data exports, .DS_Store
+├── install.sh                  ← Installs all 10 skills as slash commands
 │
 ├── .ai-guide/
 │   ├── missions.md             ← Active + completed mission queue.
-│   │                             Agent writes missions here before executing.
-│   │                             Setup wizard missions pre-populated.
-│   └── architecture.md        ← System design + decisions log.
-│                                 Agent checks before making choices.
+│   ├── architecture.md         ← System design + decisions log.
+│   └── decisions.md            ← Architectural decisions with reasoning.
 │
-└── skills/
-    └── outreach.md             ← Full pipeline instructions.
-                                  Every API call, fallback, and rule.
-                                  Agent reads this during execution.
+├── skills/                     ← 16 skill files (agent reads + executes)
+│   ├── outreach.md             ← /outreach — full cold email pipeline
+│   ├── agent-teams.md          ← /agent-teams — autonomous agent teams on cron
+│   ├── lead-borrow.md          ← /lead-borrow — borrow leads from influencer posts
+│   ├── daily-icp-feed.md       ← /daily-icp-feed — daily ICP post monitor
+│   ├── content-reflect.md      ← /content-reflect — own content performance
+│   ├── content-compare.md      ← /content-compare — competitor content analysis
+│   ├── qualify-audience.md     ← /qualify-audience — qualify own post engagers
+│   ├── signal-monitor.md       ← /signal-monitor — daily signal tracking
+│   ├── autoresearch.md         ← /autoresearch — Karpathy optimization loop (NEW)
+│   ├── apify-skills.md         ← /apify — Apify scraping skills (NEW)
+│   ├── linkedin.md             ← /linkedin — browser automation
+│   ├── linkedin-connect.md     ← LinkedIn connection flow
+│   ├── leadthunder.md          ← /leadthunder — mine LinkedIn post commenters
+│   ├── deck.md                 ← /deck — build PDF decks
+│   ├── 48hr-outreach.md        ← 48hr productivity challenge pipeline
+│   └── tetris-mission.md       ← TechStack Tetris mission builder
+│
+├── memory/                     ← Agent's long-term memory
+│   ├── optimization-log.md     ← Autoresearch experiment log (NEW)
+│   ├── baselines.md            ← Current winning copy versions (NEW)
+│   ├── competitor-analysis.md  ← Competitor research results
+│   ├── content-analysis.md     ← Own content performance data
+│   ├── lb_pipeline.md          ← Lead borrow pipeline state
+│   └── lb_conversations.md     ← Lead borrow conversation openers
+│
+├── config/                     ← User-configured settings
+│   └── competitors.md          ← Competitor list
+│
+└── docs/
+    └── apify-strategy.md       ← Apify READ/WRITE architecture reference
 ```
 
 ---
@@ -1407,6 +1430,124 @@ When you need more:
 3. Skills automatically detect Apify and use it for READ operations. No code changes needed.
 
 See `docs/apify-strategy.md` for the full architecture reference.
+
+---
+
+## Autoresearch — Autonomous Optimization Loop
+
+Inspired by [Karpathy's autoresearch](https://github.com/karpathy/autoresearch) (42K stars). The same concept — AI agent runs experiments in a loop, scores results, keeps winners, reverts losers — applied to outreach instead of ML training.
+
+**The idea:** Your agent sent 200 emails last week. Some subject lines got 50% opens, others got 12%. Some ICPs replied at 8%, others at 0%. Instead of you manually figuring out what works, the agent runs the optimization loop for you.
+
+### The Autoresearch Loop
+
+```
+1. Define metric      → what are we optimizing? (reply rate, open rate, meetings)
+2. Read baseline      → pull current performance from AERCHITECT.md
+3. Generate hypothesis → "shorter subject lines get more opens"
+4. Create variant     → write new version with ONE change
+5. Run experiment     → send variant to next 20 contacts
+6. Score result       → compare variant vs baseline after 3-7 days
+7. Keep or revert     → winner becomes new baseline
+8. Log finding        → write to memory/optimization-log.md
+9. Loop               → next hypothesis, repeat
+```
+
+### What Autoresearch Optimizes
+
+| What | Variables Tested | Metric |
+|------|-----------------|--------|
+| **Subject lines** | Length, format, personalization | Open rate |
+| **Email body** | Word count, CTA type, structure | Reply rate |
+| **ICP targeting** | Industry, company size, job title, geography | Reply rate + meetings |
+| **LinkedIn notes** | Length, approach, tone | Acceptance rate |
+| **Follow-up timing** | Day gaps, number of touches | Follow-up reply rate |
+| **Send timing** | Day of week, time of day | Open rate |
+
+### Autoresearch Example Session
+
+```
+You: /autoresearch
+
+Agent: Reading your outreach data from AERCHITECT.md...
+
+Current baselines:
+- Subject: "your team's AI gap" → 42% open rate (89 sends)
+- Body: 78 words, pain→solution→CTA → 4.5% reply rate
+- ICP: VP/Director at $20M+ US companies → 2 meetings from 89 contacts
+
+Hypothesis: Shorter subject lines (2-3 words) outperform 4+ word subjects.
+Source: Clay/Instantly 2026 data — 46% open rate for 2-4 word subjects.
+
+Variant: "quick thought"
+Control: "your team's AI gap"
+
+I'll test on next 20 contacts. Scoring in 5 days. Proceed?
+```
+
+Every experiment is logged in `memory/optimization-log.md`. Every winner is saved in `memory/baselines.md`. The agent never loses what it learns.
+
+Run `/autoresearch` → full details in `skills/autoresearch.md`
+
+---
+
+## Apify Agent Skills — Scraping Superpowers
+
+[Apify](https://github.com/apify/agent-skills) open-sourced 8 agent skills that give your outreach agent instant access to scraping across 50+ platforms. No custom integrations. Each skill is a markdown file your agent reads and executes.
+
+### The 8 Apify Skills
+
+| Skill | What It Scrapes | Outreach Use Case |
+|-------|----------------|-------------------|
+| **Lead Generation** | Google Maps, LinkedIn, Instagram, TikTok, Facebook, YouTube | Find leads by location, industry, social activity |
+| **Competitor Intelligence** | Pricing pages, social posts, ads, positioning | See what competitors post, how they price, what ads run |
+| **Brand Monitoring** | Reviews, ratings, sentiment across 10+ platforms | Companies with dropping ratings = they need your help |
+| **E-commerce** | Amazon, Walmart, eBay, IKEA, 50+ marketplaces | Find sellers by category, track pricing, read reviews |
+| **Influencer Discovery** | Instagram, TikTok, YouTube, Facebook | Find micro-influencers your ICP follows |
+| **Content Analytics** | Engagement metrics across all social | Measure what's working in your content |
+| **Trend Analysis** | Google Trends + social platforms | Spot emerging trends before they peak |
+| **Ultimate Scraper** | Any website, AI-powered | Catch-all for custom scraping jobs |
+
+### How Apify Maps to Outreach Skills
+
+```
+Apify Lead Generation    →  /outreach (more sources beyond Tavily)
+Apify Competitor Intel   →  /content-compare (real data, not guesses)
+Apify Brand Monitoring   →  /signal-monitor (reputation drops = buying signals)
+Apify Influencer         →  /lead-borrow (find whose audience = your ICP)
+Apify Content Analytics  →  /content-reflect (real metrics on your posts)
+Apify Trend Analysis     →  /daily-icp-feed (trending topics = content ideas)
+Apify Ultimate Scraper   →  everything (catch-all for custom research)
+```
+
+### Apify Power Combos
+
+**Lead Gen + Enrichment Pipeline:**
+```
+Apify Google Maps → 50 businesses in Austin
+→ Extract owner names
+→ Prospeo enrich → verified emails
+→ Gmail send personalized outreach
+```
+
+**Competitor Intel + Content Strategy:**
+```
+Apify scrape competitor's last 100 posts
+→ /content-compare analysis
+→ Generate 5 posts filling their gaps
+```
+
+**Signal Monitoring + Outreach:**
+```
+Apify brand monitoring → companies with dropping ratings
+→ /signal-monitor flags as hot leads
+→ /outreach: "noticed your reviews mention [pain] — we fix that"
+```
+
+Setup: `npm install -g apify-cli && export APIFY_TOKEN=your_token`
+Get token: [console.apify.com](https://console.apify.com/account/integrations)
+
+Full details in `skills/apify-skills.md`
 
 ---
 

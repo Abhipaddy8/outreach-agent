@@ -208,23 +208,128 @@ Each entry:
 
 ---
 
-## Autonomous Mode
+## Autonomous Mode — CronCreate + Agent Teams
 
-When running as part of a daily loop or autonomous cycle:
+This is NOT a description of what should happen. This is how to ACTUALLY set it up to run autonomously using Claude Code's `CronCreate` and `/agent-teams`.
 
-1. Check `memory/optimization-log.md` for any experiment with 20+ sends that is 3+ days old and unscored
-2. Pull the latest metrics from AERCHITECT.md
-3. Score the experiment automatically
-4. If winner found, update `memory/baselines.md` with the new winner
-5. If revert, restore previous baseline and log the learning
-6. Generate the next hypothesis based on what's been tried and what hasn't
-7. Queue the variant copy for the next outreach batch
-8. Write a one-line summary to the daily session log
+### Option A — Daily Cron (simplest)
 
-Priority order for what to optimize next:
-1. Whatever metric is furthest below benchmark (e.g., 1% reply rate when benchmark is 5%)
-2. Whatever has the most data to work with (optimize the high-volume campaign first)
-3. Whatever hasn't been tested in the longest time
+Set up a cron that runs the autoresearch scoring + hypothesis loop every day at a fixed time.
+
+**To activate**, run this in Claude Code:
+
+```
+Use CronCreate to schedule a daily autoresearch loop.
+
+Cron prompt:
+"You are the autoresearch agent. Run the daily optimization check:
+
+STEP 1 — SCORE PENDING EXPERIMENTS
+Read memory/optimization-log.md. Find any experiment with status RUNNING or QUEUED.
+For each:
+  - Check if it has 20+ sends (read AERCHITECT.md, search for the experiment tag)
+  - Check if it's 3+ days old
+  - If BOTH: pull the metrics, compare baseline vs variant, decide KEEP/REVERT/INCONCLUSIVE
+  - Write the result back to memory/optimization-log.md
+  - If KEEP: update memory/baselines.md with the new winner
+  - If REVERT: log the learning, no changes to baselines
+
+STEP 2 — PICK NEXT OPTIMIZATION TARGET
+Priority order:
+  1. Metric furthest below benchmark (benchmarks: reply rate 5-10%, open rate 40-50%, LinkedIn accept 30-50%)
+  2. Campaign with most data (optimize high-volume first)
+  3. Variable not tested in longest time
+
+STEP 3 — GENERATE HYPOTHESIS
+Based on:
+  - What hasn't been tested yet (check optimization-log.md for past experiments)
+  - What the last result suggests trying
+  - Known best practices from MEMORY.md
+
+Format: 'Changing [variable] from [current] to [proposed] will improve [metric] because [reasoning]'
+
+STEP 4 — CREATE VARIANT
+Write the variant copy. Show both baseline and variant side by side.
+Tag it as the next experiment number.
+Set status to QUEUED in optimization-log.md.
+
+STEP 5 — SUMMARY
+Print: what was scored, what was decided, what's next.
+"
+
+Schedule: daily
+Interval: 24h (or use specific time like "9am IST")
+```
+
+The cron auto-expires after 3 days. Re-run `/autoresearch` to recreate it.
+
+### Option B — Agent Teams (more powerful)
+
+For a full autonomous loop where scoring, hypothesis generation, and variant deployment happen as a coordinated team:
+
+**To activate**, create an agent team brief:
+
+```
+Use /agent-teams to create an autoresearch team.
+
+Brief: "Autonomous outreach optimization team that scores experiments,
+generates hypotheses, and deploys variants."
+
+Team structure:
+- Scorer Agent: reads AERCHITECT.md + optimization-log.md, scores any
+  experiment with 20+ sends and 3+ days old. Writes results back.
+- Hypothesis Agent: reads optimization-log.md (all past experiments),
+  reads baselines.md (current winners), generates next hypothesis.
+  Picks the metric furthest below benchmark.
+- Variant Agent: takes the hypothesis, writes the variant copy,
+  updates optimization-log.md with QUEUED status, prepares the
+  variant for the next outreach batch.
+
+Coordination:
+  Scorer runs first → Hypothesis reads scorer output → Variant reads hypothesis output.
+  Sequential, not parallel (each depends on the previous).
+
+Schedule: CronCreate with 24h interval.
+
+Memory files:
+  - memory/optimization-log.md (read + write)
+  - memory/baselines.md (read + write)
+  - AERCHITECT.md (read only)
+  - MEMORY.md (read only)
+```
+
+This creates a self-sustaining loop:
+```
+Day 1: You run /autoresearch manually → baseline established, Experiment #1 queued
+Day 2: Cron fires → Scorer: "not enough data yet (only 10 sends)" → waits
+Day 3: Cron fires → Scorer: "20 sends, 4 days old, scoring..." → KEEP/REVERT
+                   → Hypothesis: "Next test: shorter subject lines"
+                   → Variant: writes new copy, tags as Experiment #2
+Day 4: Next outreach batch uses Experiment #2 variant automatically
+Day 7: Cron scores Experiment #2 → loop continues
+```
+
+### Option C — Manual with Reminders
+
+If you don't want full autonomy, the cron can just REMIND you:
+
+```
+Use CronCreate with prompt:
+"Check memory/optimization-log.md for experiments ready to score
+(20+ sends, 3+ days old). If any found, tell me what needs scoring
+and suggest next steps. Don't auto-score — just flag it."
+
+Schedule: every 3 days
+```
+
+### Which Option to Pick
+
+| Situation | Option |
+|-----------|--------|
+| You're sending 20+ emails/day and want hands-off optimization | **B — Agent Teams** |
+| You're sending 5-10/day and want daily check-ins | **A — Daily Cron** |
+| You want to stay in control but not forget to score | **C — Manual with Reminders** |
+| You're just starting and have < 50 total sends | **Don't use autonomous mode yet** — run `/autoresearch` manually until you have baseline data |
 
 ---
 

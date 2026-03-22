@@ -98,6 +98,19 @@ If `MEMORY.md` still has placeholder values, run these missions in order. Each m
 
 ---
 
+### Mission S6B — Apify Connection (Optional)
+**Goal**: Confirm Apify API token is set and working.
+
+**Steps**:
+- [ ] Ask user: "Do you want to use Apify for advanced scraping (Google Maps, Instagram, TikTok, etc.)? It's optional but powerful."
+- [ ] If yes: ask for their Apify API token (get one free at console.apify.com/account/integrations)
+- [ ] Test the key: GET `https://api.apify.com/v2/acts?token=THEIR_TOKEN` — should return a list
+- [ ] If it works, write `APIFY_TOKEN=their_token` to a `.env` file in the repo root
+
+**Verify**: API returns 200 → ✅ PASS. 401 → ❌ FAIL, tell user to check their token. Skipped → ✅ PASS (optional).
+
+---
+
 ### Mission S7 — Setup Complete
 **Goal**: Mark setup done so wizard never runs again.
 
@@ -159,6 +172,10 @@ Full detail: `skills/outreach.md`
 | `skills/content-compare.md` | Competitor content analysis + gap finder |
 | `skills/qualify-audience.md` | Qualify engagers on own posts as warm leads |
 | `skills/signal-monitor.md` | Daily signal tracking (funding, jobs, posts) |
+| `skills/autoresearch.md` | Karpathy autoresearch loop for outreach optimization |
+| `skills/apify-skills.md` | Apify Agent Skills integration — 8 scraping superpowers |
+| `memory/optimization-log.md` | Autoresearch experiment log (created by /autoresearch) |
+| `memory/baselines.md` | Current winning copy versions (created by /autoresearch) |
 | `docs/apify-strategy.md` | READ/WRITE architecture reference |
 | `config/icp-keywords.md` | ICP keyword config (created by /daily-icp-feed setup) |
 | `config/competitors.md` | Competitor list (created by /content-compare setup) |
@@ -177,3 +194,5 @@ Full detail: `skills/outreach.md`
 | `/content-compare` | Analyze competitor content → find gaps + opportunities |
 | `/qualify-audience` | Qualify likers/commenters on own posts → warm lead pipeline |
 | `/signal-monitor` | Daily: scan funding rounds, job postings, ICP posts → action items |
+| `/autoresearch` | Karpathy-style optimization loop — A/B test copy, ICP, timing automatically |
+| `/apify` | Apify Agent Skills — scrape leads, competitors, trends from 50+ platforms |

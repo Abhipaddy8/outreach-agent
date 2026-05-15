@@ -5,3 +5,7 @@ data/*.csv
 data/*.json
 *.log
 .DS_Store
+
+# Session memory — contains real names, lead data, and conversation state.
+# Never commit this directory. See memory/README.md for context.
+memory/

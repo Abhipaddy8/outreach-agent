@@ -87,7 +87,10 @@ Hi [First Name],<br><br>
 
 [CTA — one soft question]<br><br>
 
-[Your name]
+[Your name]<br><br>
+
+<small>If you'd prefer not to receive these emails, reply with "unsubscribe" and I'll remove you immediately.<br>
+[Your physical mailing address]</small>
 ```
 
 ---

@@ -59,7 +59,7 @@ function speak(text) {
     if (!text.trim()) return resolve();
     const u = new SpeechSynthesisUtterance(text);
     if (preferredVoice) u.voice = preferredVoice;
-    u.rate = 1.05;
+    u.rate = 1.25; // snappier delivery
     u.pitch = 1.0;
     u.onend = resolve;
     u.onerror = resolve;

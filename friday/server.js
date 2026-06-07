@@ -66,6 +66,14 @@ app.post("/chat", async (req, res) => {
       model: MODEL,
       max_tokens: 1024,
       system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+      // Friday's first real capability: live web search + page fetch.
+      // These run server-side on Anthropic's infra — no extra API key, no MCP.
+      // Claude searches automatically when a question needs current info, then
+      // keeps streaming its spoken answer. We only forward text to the voice.
+      tools: [
+        { type: "web_search_20260209", name: "web_search" },
+        { type: "web_fetch_20260209", name: "web_fetch" },
+      ],
       messages,
     });
 

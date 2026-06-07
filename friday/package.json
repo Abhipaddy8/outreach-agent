@@ -1,0 +1,15 @@
+{
+  "name": "friday-voice",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Friday — a continuous voice-chat assistant. You talk, it talks back out loud. Brain = Claude; voice = on-device (free).",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "latest",
+    "express": "^4.21.2"
+  }
+}

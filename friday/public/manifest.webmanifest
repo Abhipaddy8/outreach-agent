@@ -1,0 +1,17 @@
+{
+  "name": "Friday",
+  "short_name": "Friday",
+  "description": "Your personal voice assistant.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0a0e14",
+  "theme_color": "#0a0e14",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

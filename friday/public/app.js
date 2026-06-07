@@ -38,11 +38,26 @@ function addBubble(role, text) {
   return div;
 }
 
-// ---------- Voice output (free, on-device TTS) ----------
+// ---------- Voice output ----------
+// Two modes: "elevenlabs" (natural, via the server) or "browser" (free, on-device).
+// The server tells us which at /config. Chunks are spoken in order through a queue
+// so streamed sentences don't overlap.
+let ttsMode = "browser";
+let speakQueue = [];
+let speaking = false;
+let currentAudio = null;
+
+async function loadConfig() {
+  try {
+    const cfg = await (await fetch("/config")).json();
+    ttsMode = cfg.tts || "browser";
+  } catch (_) { /* keep browser default */ }
+}
+loadConfig();
+
 function pickVoice() {
   const voices = speechSynthesis.getVoices();
   if (!voices.length) return;
-  // Prefer a natural English voice; fall back to anything English.
   preferredVoice =
     voices.find(v => /en[-_]?(GB|US)/i.test(v.lang) && /female|samantha|aria|jenny|libby/i.test(v.name)) ||
     voices.find(v => /^en/i.test(v.lang)) ||
@@ -53,18 +68,80 @@ if ("speechSynthesis" in window) {
   speechSynthesis.onvoiceschanged = pickVoice;
 }
 
-// Speak a chunk of text and resolve when it finishes.
-function speak(text) {
+// Queue a chunk of text to be spoken (non-blocking).
+function enqueueSpeak(text) {
+  if (!text.trim()) return;
+  speakQueue.push(text);
+  if (!speaking) drainSpeakQueue();
+}
+
+async function drainSpeakQueue() {
+  speaking = true;
+  while (speakQueue.length) {
+    const text = speakQueue.shift();
+    try {
+      if (ttsMode === "elevenlabs") await speakEleven(text);
+      else await speakBrowser(text);
+    } catch (_) {
+      try { await speakBrowser(text); } catch (_) {} // fall back if ElevenLabs fails
+    }
+  }
+  speaking = false;
+}
+
+function speakBrowser(text) {
   return new Promise(resolve => {
-    if (!text.trim()) return resolve();
     const u = new SpeechSynthesisUtterance(text);
     if (preferredVoice) u.voice = preferredVoice;
-    u.rate = 1.25; // snappier delivery
+    u.rate = 1.25;
     u.pitch = 1.0;
     u.onend = resolve;
     u.onerror = resolve;
     speechSynthesis.speak(u);
   });
+}
+
+async function speakEleven(text) {
+  const res = await fetch("/tts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  if (!res.ok) throw new Error("tts " + res.status);
+  const url = URL.createObjectURL(await res.blob());
+  return new Promise(resolve => {
+    const audio = new Audio(url);
+    currentAudio = audio;
+    audio.playbackRate = 1.12; // a touch snappier
+    const done = () => { URL.revokeObjectURL(url); if (currentAudio === audio) currentAudio = null; resolve(); };
+    audio.onended = done;
+    audio.onerror = done;
+    audio.play().catch(done);
+  });
+}
+
+// Stop everything immediately (barge-in / session end).
+function stopSpeaking() {
+  speakQueue = [];
+  speaking = false;
+  speechSynthesis.cancel();
+  if (currentAudio) { try { currentAudio.pause(); } catch (_) {} currentAudio = null; }
+}
+
+function isSpeaking() {
+  return speaking || speakQueue.length > 0 || speechSynthesis.speaking ||
+    (currentAudio && !currentAudio.paused);
+}
+
+// Unlock audio playback inside the user's tap (required by iOS for both modes).
+function unlockAudio() {
+  try { speechSynthesis.speak(new SpeechSynthesisUtterance(" ")); } catch (_) {}
+  try {
+    const silent = new Audio(
+      "data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQxAADB8AhSmxhIIEVCSiJrDCQBTcu3UrAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    );
+    silent.play().catch(() => {});
+  } catch (_) {}
 }
 
 // ---------- Talking to the brain ----------
@@ -85,7 +162,7 @@ async function askFriday(userText) {
     const ready = final ? pending : pending.slice(0, cut);
     if (ready.trim()) {
       spokenUpTo += final ? pending.length : cut;
-      speak(ready);
+      enqueueSpeak(ready);
     }
   };
 
@@ -130,7 +207,8 @@ async function askFriday(userText) {
     await waitForSpeechEnd();
   } catch (err) {
     reply.textContent = "(Friday had a problem: " + err.message + ")";
-    await speak("Sorry, I ran into a problem.");
+    enqueueSpeak("Sorry, I ran into a problem.");
+    await waitForSpeechEnd();
   }
 
   if (active) startListening();
@@ -139,7 +217,7 @@ async function askFriday(userText) {
 function waitForSpeechEnd() {
   return new Promise(resolve => {
     const check = () => {
-      if (!speechSynthesis.speaking && !speechSynthesis.pending) resolve();
+      if (!isSpeaking()) resolve();
       else setTimeout(check, 150);
     };
     check();
@@ -204,8 +282,8 @@ function startSession() {
   history.length = 0;
   transcriptEl.innerHTML = "";
 
-  // Unlock TTS audio on iOS by speaking within the tap gesture.
-  speak(" ");
+  // Unlock audio playback on iOS within the tap gesture (both voice modes).
+  unlockAudio();
 
   recognition = buildRecognition();
   startListening();
@@ -215,16 +293,16 @@ function stopSession(message = "Tap to wake Friday") {
   active = false;
   recognizing = false;
   try { recognition && recognition.stop(); } catch (_) {}
-  speechSynthesis.cancel();
+  stopSpeaking();
   setState("", message);
 }
 
 orb.addEventListener("click", () => {
   if (!active) {
     startSession();
-  } else if (speechSynthesis.speaking) {
+  } else if (isSpeaking()) {
     // Barge-in: stop talking, listen again.
-    speechSynthesis.cancel();
+    stopSpeaking();
     startListening();
   } else {
     stopSession();

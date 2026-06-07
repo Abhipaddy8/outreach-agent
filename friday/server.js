@@ -27,6 +27,12 @@ const API_KEY = process.env.ANTHROPIC_API_KEY;
 const MODEL = process.env.JARVIS_MODEL || process.env.FRIDAY_MODEL || "claude-opus-4-8";
 const PORT = process.env.PORT || 3000;
 
+// Optional: natural voice via ElevenLabs. If no key is set, the browser falls
+// back to the free on-device voice automatically.
+const ELEVEN_KEY = process.env.ELEVENLABS_API_KEY;
+const ELEVEN_VOICE = process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM"; // "Rachel" (a default)
+const ELEVEN_MODEL = process.env.ELEVENLABS_MODEL || "eleven_turbo_v2_5"; // low-latency
+
 if (!API_KEY) {
   console.error("\n  ✗ ANTHROPIC_API_KEY is not set. Copy .env.example to .env and add your key.\n");
   process.exit(1);
@@ -43,6 +49,60 @@ const SYSTEM_PROMPT = fs.readFileSync(
 const app = express();
 app.use(express.json({ limit: "1mb" }));
 app.use(express.static(path.join(__dirname, "public")));
+
+// Tell the front-end which voice to use.
+app.get("/config", (_req, res) => {
+  res.json({ tts: ELEVEN_KEY ? "elevenlabs" : "browser" });
+});
+
+// POST /tts  { text }  → streams natural-voice audio (audio/mpeg) from ElevenLabs.
+// The ElevenLabs key never leaves the server.
+app.post("/tts", async (req, res) => {
+  if (!ELEVEN_KEY) {
+    res.status(400).json({ error: "ElevenLabs not configured" });
+    return;
+  }
+  const text = (req.body?.text || "").toString().trim();
+  if (!text) {
+    res.status(400).json({ error: "text required" });
+    return;
+  }
+  try {
+    const upstream = await fetch(
+      `https://api.elevenlabs.io/v1/text-to-speech/${ELEVEN_VOICE}/stream`,
+      {
+        method: "POST",
+        headers: {
+          "xi-api-key": ELEVEN_KEY,
+          "Content-Type": "application/json",
+          Accept: "audio/mpeg",
+        },
+        body: JSON.stringify({
+          text,
+          model_id: ELEVEN_MODEL,
+          voice_settings: { stability: 0.4, similarity_boost: 0.8 },
+        }),
+      }
+    );
+    if (!upstream.ok || !upstream.body) {
+      console.error("ElevenLabs error:", upstream.status, await upstream.text().catch(() => ""));
+      res.status(502).json({ error: "tts upstream " + upstream.status });
+      return;
+    }
+    res.setHeader("Content-Type", "audio/mpeg");
+    const reader = upstream.body.getReader();
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      res.write(Buffer.from(value));
+    }
+    res.end();
+  } catch (err) {
+    console.error("tts error:", err?.message || err);
+    if (!res.headersSent) res.status(500).json({ error: "tts failed" });
+    else res.end();
+  }
+});
 
 // POST /chat  { messages: [{role, content}, ...] }  → SSE stream of {text} chunks
 app.post("/chat", async (req, res) => {
@@ -93,6 +153,7 @@ app.post("/chat", async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`\n  Friday is listening on http://localhost:${PORT}`);
-  console.log(`  Model: ${MODEL}\n`);
+  console.log(`  Model: ${MODEL}`);
+  console.log(`  Voice: ${ELEVEN_KEY ? "ElevenLabs (natural)" : "on-device (browser)"}\n`);
   console.log("  Open it on your iPhone over HTTPS (see README) and tap the orb to talk.\n");
 });

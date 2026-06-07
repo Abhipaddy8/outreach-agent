@@ -98,8 +98,9 @@ friday/
   into `server.js` so she can *do* things, not just talk. Add Google Calendar first.
 - **Memory.** Persist conversation summaries + a profile so she remembers you
   across sessions (start with a JSON file, graduate to a vector store).
-- **Nicer voice.** Swap the on-device TTS for an ElevenLabs streamed voice if you
-  want a specific Friday voice (free tier available).
+- **Nicer voice (built in).** Friday already supports a natural ElevenLabs voice —
+  just add `ELEVENLABS_API_KEY` to `.env` (free tier ~10k chars/month) and restart.
+  No key = free on-device voice. Change `ELEVENLABS_VOICE_ID` to pick a voice.
 - **Proactivity.** A cron job that has Friday greet you with a morning brief.
 
 > A note on iOS speech recognition: Safari's Web Speech API stops after each

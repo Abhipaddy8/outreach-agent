@@ -26,6 +26,7 @@ for skill in "${SKILLS[@]}"; do
   mkdir -p ".claude/skills/$skill"
   echo -n "  $skill... "
 
+  HTTP_CODE=$(curl -sL -w "%{http_code}" -o ".claude/skills/$skill/SKILL.md" \
   HTTP_CODE=$(curl -fsSL --proto '=https' --tlsv1.2 -w "%{http_code}" \
     -o ".claude/skills/$skill/SKILL.md" \
     "$BASE_URL/.claude/skills/$skill/SKILL.md")

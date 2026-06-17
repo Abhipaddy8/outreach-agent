@@ -71,6 +71,7 @@ Automated daily outreach pipeline for the 48-Hour Productivity Challenge offer. 
 - 2-4 word subject lines
 - No links in Email 1
 - Interest-based CTA ("Curious?" "Worth a conversation?")
+- Text opt-out in Email 4 only
 - Every email must include opt-out footer: `If you'd prefer not to receive these, reply "unsubscribe".` and your physical mailing address (CAN-SPAM requirement — not Email 4 only, EVERY email)
 - Deck sent ONLY after they reply (never in cold email)
 - Always sign: `Abhishek Padmanabhan / AI Systems Engineer`

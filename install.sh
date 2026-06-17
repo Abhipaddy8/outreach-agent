@@ -30,6 +30,16 @@ echo "Global install (~/.claude/skills/):"
 for skill in "${SKILLS[@]}"; do
   if [ -f "$PROJECT_SKILLS/$skill/SKILL.md" ]; then
     mkdir -p "$GLOBAL_SKILLS/$skill"
+    cp "$PROJECT_SKILLS/$skill/SKILL.md" "$GLOBAL_SKILLS/$skill/SKILL.md"
+    echo "  ✅ /$skill"
+  elif [ -f "$REPO_DIR/skills/$skill.md" ]; then
+    # Fallback: convert flat .md to SKILL.md format
+    mkdir -p "$GLOBAL_SKILLS/$skill"
+    desc=$(grep -A1 "## When to use" "$REPO_DIR/skills/$skill.md" 2>/dev/null | tail -1 | head -c 120)
+    {
+      echo "---"
+      echo "name: $skill"
+      echo "description: $desc"
     # Warn before overwriting an existing skill
     if [ -f "$GLOBAL_SKILLS/$skill/SKILL.md" ]; then
       echo -n "  /$skill already exists — overwrite? [y/N] "

@@ -24,6 +24,7 @@
     },
     "apify": {
       "command": "npx",
+      "args": ["-y", "@apify/mcp-server@latest"],
       "args": ["-y", "@apify/actors-mcp-server@0.10.4"],
       "env": {
         "APIFY_TOKEN": "YOUR_APIFY_TOKEN"

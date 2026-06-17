@@ -23,6 +23,7 @@ Extract per company: company name, website domain, founder/CTO name, LinkedIn UR
 
 ## Step 2 — Email Enrichment (Prospeo)
 
+**API Key**: `6606f927ebdb27e9ff3cb3c4dab84356`
 **API Key**: `ADD_YOUR_PROSPEO_KEY_HERE`
 **Endpoint**: `POST https://api.prospeo.io/enrich-person`
 
@@ -87,6 +88,7 @@ Hi [First Name],<br><br>
 
 [CTA — one soft question]<br><br>
 
+[Your name]
 [Your name]<br><br>
 
 <small>If you'd prefer not to receive these emails, reply with "unsubscribe" and I'll remove you immediately.<br>

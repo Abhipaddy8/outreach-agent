@@ -40,6 +40,26 @@ for skill in "${SKILLS[@]}"; do
       echo "---"
       echo "name: $skill"
       echo "description: $desc"
+    # Warn before overwriting an existing skill
+    if [ -f "$GLOBAL_SKILLS/$skill/SKILL.md" ]; then
+      echo -n "  /$skill already exists — overwrite? [y/N] "
+      read -r answer
+      [[ "$answer" =~ ^[Yy]$ ]] || { echo "  ⏭ skipped"; continue; }
+    fi
+    cp "$PROJECT_SKILLS/$skill/SKILL.md" "$GLOBAL_SKILLS/$skill/SKILL.md"
+    echo "  ✅ /$skill"
+  elif [ -f "$REPO_DIR/skills/$skill.md" ]; then
+    mkdir -p "$GLOBAL_SKILLS/$skill"
+    if [ -f "$GLOBAL_SKILLS/$skill/SKILL.md" ]; then
+      echo -n "  /$skill already exists — overwrite? [y/N] "
+      read -r answer
+      [[ "$answer" =~ ^[Yy]$ ]] || { echo "  ⏭ skipped"; continue; }
+    fi
+    # Fallback: prepend minimal frontmatter, avoid synthesising broken YAML from heading text
+    {
+      echo "---"
+      echo "name: $skill"
+      echo "description: See skill file for details."
       echo "---"
       echo ""
       cat "$REPO_DIR/skills/$skill.md"

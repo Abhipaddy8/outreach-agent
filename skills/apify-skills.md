@@ -39,7 +39,7 @@ Get your free API token at: https://console.apify.com/account/integrations
 - "Scrape LinkedIn company pages for Series A startups in healthcare"
 
 **Apify Actors to use**:
-- `apify/google-maps-scraper` — businesses by location + category
+- `johnvc/google-maps-places-api` — businesses by location + category
 - `apify/instagram-scraper` — profiles, posts, hashtags
 - `apify/google-search-scraper` — SERP results with snippets
 
@@ -129,12 +129,12 @@ API_TOKEN = "your_apify_token"
 
 # Start an Actor run
 response = requests.post(
-    f"https://api.apify.com/v2/acts/apify~google-maps-scraper/runs",
+    f"https://api.apify.com/v2/acts/johnvc~google-maps-places-api/runs",
     headers={"Authorization": f"Bearer {API_TOKEN}"},
     json={
-        "searchStringsArray": ["AI agency"],
-        "locationQuery": "Austin, TX",
-        "maxCrawledPlacesPerSearch": 50
+        "searchTerms": ["AI agency"],
+        "location": "Austin, TX, United States",
+        "maxResultsPerSearch": 50
     }
 )
 run_id = response.json()["data"]["id"]
